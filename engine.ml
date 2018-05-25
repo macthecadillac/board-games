@@ -42,7 +42,7 @@ let random_move availableMoves =
 let rec monte_carlo_simulation mode player board =
   match Mechanics.is_finished board with
   | true  -> (match Mechanics.winner_is board with
-      | None   -> Favorability.Negative
+      | None   -> Favorability.Indecisive
       | Some p -> (match p, player with
           | One, One | Two, Two -> Favorability.Positive
           | _                   -> Favorability.Negative))
@@ -73,11 +73,12 @@ let compute_favorability searchLimit player board =
   in aux searchLimit (List.init 6 (fun x -> Favorability.init ()))
 
 let most_favored_move searchLimit player board =
-  let indx, _ = compute_favorability searchLimit player board
-    |> List.combine (List.init 6 (fun x -> Index.of_int x))
-    |> List.fold_left (fun a b ->
-                         let _, fA = a
-                         and _, fB = b in
-                         Favorability.(if fA > fB then a else b))
-                      (Index.of_int 0, Favorability.init ())
+  let indx, _ =
+    compute_favorability searchLimit player board
+      |> List.combine (List.init 6 (fun x -> Index.of_int x))
+      |> List.fold_left (fun a b ->
+                           let _, fA = a
+                           and _, fB = b in
+                           Favorability.(if fA > fB then a else b))
+                        (Index.of_int 0, Favorability.init ())
   in indx
