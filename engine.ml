@@ -51,12 +51,12 @@ let rec monte_carlo_simulation mode player board =
           let availableMoves = available_moves board in
           let n, (count, board) = random_move availableMoves in
           let newBoard = Mechanics.play n count board in
-          monte_carlo_simulation Random One newBoard
+          monte_carlo_simulation Random player newBoard
       | Manual n -> match Mechanics.remove_pieces n board with
           | None                -> Favorability.Indecisive
           | Some (count, board) ->
               let newBoard = Mechanics.play n count board in
-              monte_carlo_simulation Random One newBoard
+              monte_carlo_simulation Random player newBoard
 
 let compute_favorability searchLimit player board =
   let rec aux sl favorability =
