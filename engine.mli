@@ -23,10 +23,9 @@ val random_move :
   (Index.t * (Count.t * mancala_board)) list ->
     (Index.t * (Count.t * mancala_board))
 
-val simulate : sim_mode -> player -> mancala_board -> Favorability.outcome
+val monte_carlo_simulation :
+  sim_mode -> player -> mancala_board -> Favorability.outcome
 
-val compute_monte_carlo_favorability :
-  int -> player -> mancala_board ->
-  Favorability.t list
+val compute_favorability : int -> player -> mancala_board -> Favorability.t list
 
 val most_favored_move : int -> player -> mancala_board -> Index.t

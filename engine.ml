@@ -39,7 +39,7 @@ let random_move availableMoves =
   let state = Random.pick_list availableMoves in
   Random.run state
 
-let rec simulate mode player board =
+let rec monte_carlo_simulation mode player board =
   match Mechanics.is_finished board with
   | true  -> (match Mechanics.winner_is board with
       | None   -> Favorability.Negative
@@ -51,19 +51,19 @@ let rec simulate mode player board =
           let availableMoves = available_moves board in
           let n, (count, board) = random_move availableMoves in
           let newBoard = Mechanics.play n count board in
-          simulate Random One newBoard
+          monte_carlo_simulation Random One newBoard
       | Manual n -> match Mechanics.remove_pieces n board with
           | None                -> Favorability.Indecisive
           | Some (count, board) ->
               let newBoard = Mechanics.play n count board in
-              simulate Random One newBoard
+              monte_carlo_simulation Random One newBoard
 
-let compute_monte_carlo_favorability searchLimit player board =
+let compute_favorability searchLimit player board =
   let rec aux sl favorability =
     if sl = 0 then favorability
     else let fav =
       List.init 6 (fun x -> Index.of_int x)
-        |> List.map (fun n -> simulate (Manual n) player board)
+        |> List.map (fun n -> monte_carlo_simulation (Manual n) player board)
         |> List.map2 (fun f0 f -> match f with
                       | Favorability.Positive   -> Favorability.promote f0
                       | Favorability.Negative   -> Favorability.demote f0
@@ -73,7 +73,7 @@ let compute_monte_carlo_favorability searchLimit player board =
   in aux searchLimit (List.init 6 (fun x -> Favorability.init ()))
 
 let most_favored_move searchLimit player board =
-  let indx, _ = compute_monte_carlo_favorability searchLimit player board
+  let indx, _ = compute_favorability searchLimit player board
     |> List.combine (List.init 6 (fun x -> Index.of_int x))
     |> List.fold_left (fun a b ->
                          let _, fA = a
