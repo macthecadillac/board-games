@@ -61,13 +61,14 @@ let rec simulate mode player board =
 let compute_monte_carlo_favorability searchLimit player board =
   let rec aux sl favorability =
     if sl = 0 then favorability
-    else let fav = List.init 6 (fun x -> Index.of_int x)
-      |> List.map (fun n -> simulate (Manual n) player board)
-      |> List.map2 (fun f0 f -> match f with
-                    | Favorability.Positive   -> Favorability.promote f0
-                    | Favorability.Negative   -> Favorability.demote f0
-                    | Favorability.Indecisive -> f0)
-                   favorability
+    else let fav =
+      List.init 6 (fun x -> Index.of_int x)
+        |> List.map (fun n -> simulate (Manual n) player board)
+        |> List.map2 (fun f0 f -> match f with
+                      | Favorability.Positive   -> Favorability.promote f0
+                      | Favorability.Negative   -> Favorability.demote f0
+                      | Favorability.Indecisive -> f0)
+                     favorability
     in aux (sl - 1) fav
   in aux searchLimit (List.init 6 (fun x -> Favorability.init ()))
 
