@@ -37,7 +37,7 @@ let rec play n count board =
       let newHoles = List.map C.inc (H.get_holes board.thisSide) in
       H.bump_tally (C.of_int 1) board.thisSide
         |> H.update_holes newHoles in
-    let otherSide = 
+    let otherSide =
       let newHoles = List.map C.inc (H.get_holes board.otherSide) in
       H.update_holes newHoles board.thisSide in
     { thisSide; otherSide } in
@@ -78,8 +78,7 @@ let rec play n count board =
         | false -> switch_sides board
         | true  ->
             let b = board in
-            let tally = C.add (H.get_tally b.thisSide)
-                              (H.nth b.otherSide indx) in
+            let tally = C.(H.get_tally b.thisSide + (H.nth b.otherSide indx)) in
             let otherSide = H.zero_hole indx b.otherSide in
             let thisSide = H.update_tally tally b.thisSide in
             switch_sides { thisSide; otherSide } in
@@ -90,3 +89,23 @@ let rec play n count board =
   else
     distribute_pieces n count board
       |> switch_n_capture n count
+
+let is_finished board =
+  HalfBoard.is_empty board.thisSide || HalfBoard.is_empty board.otherSide
+
+let final_tally board =
+  let thisSide = HalfBoard.clear_board board.thisSide in
+  let otherSide = HalfBoard.clear_board board.otherSide in
+  { thisSide; otherSide }
+
+let winner_is board =
+  let module H = HalfBoard in
+  let module C = Count in
+  let aux a b =
+    let (aTally, bTally) = H.get_tally a, H.get_tally b in
+    if C.to_int aTally > C.to_int bTally then Some (H.get_player a)
+    else if C.to_int bTally > C.to_int aTally then Some (H.get_player b)
+    else None
+  in
+  let talliedBoard = final_tally board in
+  aux talliedBoard.thisSide talliedBoard.otherSide

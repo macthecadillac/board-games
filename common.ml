@@ -1,6 +1,6 @@
 open Containers
 
-type player = 
+type player =
   | One
   | Two
 
@@ -20,7 +20,7 @@ module Count = struct
   let to_int n = n
   let of_int n = n
   let inc n = to_int n |> (+) 1 |> of_int
-  let add a b = to_int a + (to_int b) |> of_int
+  let (+) a b = to_int a + (to_int b) |> of_int
 end
 
 module HalfBoard = struct
@@ -82,4 +82,3 @@ let print_board board =
   Printf.printf "    ";
   List.iter (Printf.printf " %i ") board.thisSide.holes;
   print_newline ()
-

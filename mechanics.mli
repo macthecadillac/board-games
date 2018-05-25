@@ -8,3 +8,9 @@ val remove_pieces : Common.Index.t -> Common.mancala_board ->
 
 val play : Common.Index.t -> Common.Count.t -> Common.mancala_board ->
   Common.mancala_board
+
+val is_finished : Common.mancala_board -> bool
+
+val final_tally : Common.mancala_board -> Common.mancala_board
+
+val winner_is : Common.mancala_board -> Common.player option
