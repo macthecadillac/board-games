@@ -10,12 +10,16 @@ module Favorability = struct
     | Positive
     | Negative
     | Indecisive
-  let init () = { numerator = 0; denominator = 1 }
-  let as_float s = Float.of_int s.numerator /. (Float.of_int s.denominator)
+  let init () = { numerator = 0; denominator = 0 }
+  let as_float s = match s.denominator with
+    | 0 -> 0.
+    | _ -> Float.of_int s.numerator /. (Float.of_int s.denominator)
   let promote s =
-    { numerator = s.numerator + 1; denominator = s.denominator + 1 }
-  let demote s = { s with denominator = s.denominator + 1 }
+    { numerator = s.numerator + 2; denominator = s.denominator + 2 }
+  let demote s = { s with denominator = s.denominator + 2 }
+  let mote s = { numerator = s.numerator + 1; denominator = s.denominator + 2 }
   let (>) a b = as_float a >. (as_float b)
+  let (=) a b = Float.abs (as_float a -. (as_float b)) <. 1e-8
 end
 
 type sim_mode =
@@ -39,7 +43,7 @@ let random_move availableMoves =
   let state = Random.pick_list availableMoves in
   Random.run state
 
-let rec monte_carlo_simulation mode player board =
+let rec random_playout mode player board =
   match Mechanics.is_finished board with
   | true  -> (match Mechanics.winner_is board with
       | None   -> Favorability.Indecisive
@@ -51,34 +55,38 @@ let rec monte_carlo_simulation mode player board =
           let availableMoves = available_moves board in
           let n, (count, board) = random_move availableMoves in
           let newBoard = Mechanics.play n count board in
-          monte_carlo_simulation Random player newBoard
+          random_playout Random player newBoard
       | Manual n -> match Mechanics.remove_pieces n board with
           | None                -> Favorability.Indecisive
           | Some (count, board) ->
               let newBoard = Mechanics.play n count board in
-              monte_carlo_simulation Random player newBoard
+              random_playout Random player newBoard
 
 let compute_favorability searchLimit player board =
   let rec aux sl favorability =
     if sl = 0 then favorability
     else let fav =
       List.init 6 (fun x -> Index.of_int x)
-        |> List.map (fun n -> monte_carlo_simulation (Manual n) player board)
+        |> List.map (fun n -> random_playout (Manual n) player board)
         |> List.map2 (fun f0 f -> match f with
                       | Favorability.Positive   -> Favorability.promote f0
                       | Favorability.Negative   -> Favorability.demote f0
-                      | Favorability.Indecisive -> f0)
+                      | Favorability.Indecisive -> Favorability.mote f0)
                      favorability
     in aux (sl - 1) fav
   in aux searchLimit (List.init 6 (fun x -> Favorability.init ()))
 
 let most_favored_move searchLimit player board =
+  let pick_max a b =
+    let _, fA = a and _, fB = b in
+    Favorability.(
+      if fA > fB then a
+      (* pick one at random if both have the same favorability *)
+      else if fA = fB then let r = Random.pick_list [a; b] in Random.run r
+      else b
+    ) in
   let indx, _ =
     compute_favorability searchLimit player board
       |> List.combine (List.init 6 (fun x -> Index.of_int x))
-      |> List.fold_left (fun a b ->
-                           let _, fA = a
-                           and _, fB = b in
-                           Favorability.(if fA > fB then a else b))
-                        (Index.of_int 0, Favorability.init ())
+      |> List.fold_left pick_max (Index.of_int 0, Favorability.init ())
   in indx
