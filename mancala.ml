@@ -13,6 +13,18 @@ let print_tally board =
   aux talliedBoard.thisSide;
   aux talliedBoard.otherSide
 
+let rec acquire_input () =
+  print_string "Enter your move (0-5): ";
+  let humanMove =
+    try read_int () |> Index.of_int
+    with Failure _ ->
+      print_endline "Invalid input.";
+      acquire_input () in
+  if Index.to_int humanMove > 5 || Index.to_int humanMove < 0 then
+    (print_endline "Invalid input.";
+    acquire_input ())
+  else humanMove
+
 let rec two_player_game board = match Mechanics.is_finished board with
   | false ->
       print_string "\n------------------------------\n";
@@ -21,13 +33,11 @@ let rec two_player_game board = match Mechanics.is_finished board with
       print_player (HalfBoard.get_player board.thisSide);
       print_newline ();
       print_board board;
-      Printf.printf "\nEnter your move (0-5): ";
-      let n = read_int () |> Index.of_int in (
-      match Mechanics.remove_pieces n board with
+      let n = acquire_input () in
+      (match Mechanics.remove_pieces n board with
       | Some (count, board) -> Mechanics.play n count board |> two_player_game
       | None                -> print_endline "\nThe bowl is empty!";
-                               two_player_game board
-      )
+                               two_player_game board)
   | true ->
       print_tally board;
       match Mechanics.winner_is board with
@@ -42,22 +52,21 @@ let rec play_vs_ai searchLimit humanSide board =
   | false -> (match humanSide, currSide with
       | One, One | Two, Two ->
         print_board board;
-        Printf.printf "\nEnter your move (0-5): ";
-        let humanMove = read_int () |> Index.of_int in (
-        match Mechanics.remove_pieces humanMove board with
+        let humanMove = acquire_input () in
+        (match Mechanics.remove_pieces humanMove board with
           | Some (count, newBoard) ->
               let b = Mechanics.play humanMove count newBoard in
               play_vs_ai searchLimit humanSide b
-          | None                -> print_endline "\nThe bowl is empty!";
-                                   play_vs_ai searchLimit humanSide board)
+          | None                   -> print_endline "\nThe bowl is empty!\n";
+                                      play_vs_ai searchLimit humanSide board)
       | _ ->
         let aiMove = Engine.most_favored_move searchLimit currSide board in
         (match Mechanics.remove_pieces aiMove board with
           | Some (count, newBoard) ->
               let b = Mechanics.play aiMove count newBoard in
               play_vs_ai searchLimit humanSide b
-          | None                -> print_endline "\nThe bowl is empty!";
-                                   play_vs_ai searchLimit humanSide board))
+          | None                   -> (* print_endline "\nThe bowl is empty!"; *)
+                                      play_vs_ai searchLimit humanSide board))
   | true  ->
       print_tally board;
       match Mechanics.winner_is board with
