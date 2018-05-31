@@ -29,7 +29,8 @@ module HalfBoard = struct
     tally  : Count.t;
     holes  : Count.t list;
   }
-  let init player = { player; tally = 0; holes = List.init 6 (fun x -> 4); }
+  let init player = { player; tally = Count.of_int 0;
+                      holes = List.init 6 (fun x -> Count.of_int 4); }
 
   let get_tally halfBoard = halfBoard.tally
   let get_player halfBoard = halfBoard.player
@@ -39,23 +40,26 @@ module HalfBoard = struct
     { halfBoard with holes }
   let zero_hole = set_hole (Count.of_int 0)
 
-  let bump_tally n halfBoard = { halfBoard with tally = halfBoard.tally + n }
+  let bump_tally n halfBoard = { halfBoard with
+                                 tally = Count.(halfBoard.tally + n) }
   let update_tally tally halfBoard = { halfBoard with tally }
   let update_holes holes halfBoard = { halfBoard with holes }
 
   let nth halfBoard i = List.nth halfBoard.holes (Index.to_int i)
   let rev halfBoard = { halfBoard with holes = List.rev halfBoard.holes }
 
-  let is_empty halfBoard = List.count (fun x -> x > 0) halfBoard.holes = 0
+  let is_empty halfBoard = List.count (fun x -> Count.to_int x > 0)
+                                      halfBoard.holes = 0
   let clear_board halfBoard = { halfBoard with
-    tally = halfBoard.tally + List.fold_right (+) halfBoard.holes 0;
-    holes = List.map (fun x -> 0) halfBoard.holes;
+    tally = Count.(halfBoard.tally +
+                   List.fold_right (+) halfBoard.holes (of_int 0));
+    holes = List.map (fun x -> Count.of_int 0) halfBoard.holes;
   }
   let rm_pieces n halfBoard =
     let n = Index.to_int n in
-    let count = Count.of_int (List.nth halfBoard.holes n) in
+    let count = List.nth halfBoard.holes n in
     let newHalfBoard = { halfBoard with
-                         holes = List.set_at_idx n 0 halfBoard.holes }
+                         holes = List.set_at_idx n (Count.of_int 0) halfBoard.holes }
     in
     count, newHalfBoard
 end
