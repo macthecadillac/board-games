@@ -26,8 +26,6 @@ let rec acquire_input () =
 
 let rec two_player_game board = match Board.is_finished board with
   | false ->
-      print_string "\n------------------------------\n";
-      print_string "------------------------------\n\n";
       Printf.printf "Current player: ";
       print_player (Board.curr_player board);
       print_newline ();
@@ -36,7 +34,9 @@ let rec two_player_game board = match Board.is_finished board with
       (match Board.remove_pieces n board with
       | Some (cnt, b) ->
           let newBoard = Board.dist (Index.inc n) cnt b in
-          Board.print newBoard;
+          print_endline "\nAfter your move:\n";
+          Board.print b;
+          print_endline "\n================================\n";
           two_player_game newBoard
       | None          -> print_endline "\nThe bowl is empty!";
                          two_player_game board)
@@ -70,8 +70,7 @@ let rec play_vs_ai searchLimit humanSide board =
           | Some (count, newBoard) ->
               let b = Board.dist (Index.inc aiMove) count newBoard in
               play_vs_ai searchLimit humanSide b
-          | None                   -> print_endline "Oh shit something is wrong";
-                                      play_vs_ai searchLimit humanSide board))
+          | None                   -> ())) (* Impossible branch *)
   | true  ->
       print_tally board;
       match Board.winner_is board with

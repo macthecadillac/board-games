@@ -61,10 +61,13 @@ let rec random_playout mode player board =
               random_playout Random player newBoard
 
 let compute_favorability searchLimit player board =
+  let indcs, _ = board |> available_moves |> List.split in
+  let nIndcs = List.length indcs in
   let rec aux sl favorability =
-    if sl = 0 then favorability
-    else let fav =
-      List.init 6 (fun x -> Index.of_int x)
+    if sl = 0 then List.combine indcs favorability
+    else 
+      let fav =
+        indcs
         |> List.map (fun n -> random_playout (Manual n) player board)
         |> List.map2 (fun f0 f -> match f with
                       | Favorability.Positive   -> Favorability.promote f0
@@ -72,7 +75,7 @@ let compute_favorability searchLimit player board =
                       | Favorability.Indecisive -> Favorability.mote f0)
                      favorability
     in aux (sl - 1) fav
-  in aux searchLimit (List.init 6 (fun x -> Favorability.init ()))
+  in aux searchLimit (List.init nIndcs (fun x -> Favorability.init ()))
 
 let most_favored_move searchLimit player board =
   let pick_max a b =
@@ -84,7 +87,7 @@ let most_favored_move searchLimit player board =
       else b
     ) in
   let indx, _ =
-    compute_favorability searchLimit player board
-      |> List.combine (List.init 6 (fun x -> Index.of_int x))
-      |> List.fold_left pick_max (Index.of_int 0, Favorability.init ())
+    let entries = compute_favorability searchLimit player board in
+    let firstEntry = List.hd entries in
+    List.fold_left pick_max firstEntry entries
   in indx

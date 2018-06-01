@@ -26,6 +26,7 @@ val random_move :
 val random_playout :
   sim_mode -> player -> Board.t -> Favorability.outcome
 
-val compute_favorability : int -> player -> Board.t -> Favorability.t list
+val compute_favorability :
+  int -> player -> Board.t -> (Common.Index.t * Favorability.t) list
 
 val most_favored_move : int -> player -> Board.t -> Index.t
