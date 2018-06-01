@@ -13,7 +13,7 @@ module Favorability : sig
 end
 
 type sim_mode =
-  | All of Index.t
+  | Manual of Index.t
   | Random
 
 val available_moves :

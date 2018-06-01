@@ -23,7 +23,7 @@ module Favorability = struct
 end
 
 type sim_mode =
-  | All of Index.t
+  | Manual of Index.t
   | Random
 
 let available_moves board =
@@ -54,7 +54,7 @@ let rec random_playout mode player board =
           let n, (count, board) = random_move availableMoves in
           let newBoard = Board.dist (Index.inc n) count board in
           random_playout Random player newBoard
-      | All n  -> match Board.remove_pieces n board with
+      | Manual n  -> match Board.remove_pieces n board with
           | None                -> Favorability.Indecisive
           | Some (count, board) ->
               let newBoard = Board.dist (Index.inc n) count board in
@@ -65,7 +65,7 @@ let compute_favorability searchLimit player board =
     if sl = 0 then favorability
     else let fav =
       List.init 6 (fun x -> Index.of_int x)
-        |> List.map (fun n -> random_playout (All n) player board)
+        |> List.map (fun n -> random_playout (Manual n) player board)
         |> List.map2 (fun f0 f -> match f with
                       | Favorability.Positive   -> Favorability.promote f0
                       | Favorability.Negative   -> Favorability.demote f0
