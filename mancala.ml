@@ -105,7 +105,7 @@ let side =
 let numPlayouts =
   let doc = "The number of playouts to be performed per branch. "
           ^ "The higher the number, the stronger the game play." in
-  Arg.(value & opt int 100 & info ["n"] ~docv:"NPLAYOUTS" ~doc)
+  Arg.(value & opt int 200 & info ["n"] ~docv:"NPLAYOUTS" ~doc)
 
 let info =
   let doc = "A simple implementation of the mancala game" in
