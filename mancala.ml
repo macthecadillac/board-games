@@ -1,5 +1,7 @@
+(* TODO: Add command line arguments using michipili/getopts *)
 open Containers
 open Common
+open Cmdliner
 
 let init_board () = Board.build (HalfBoard.init One) (HalfBoard.init Two)
 
@@ -78,16 +80,36 @@ let rec play_vs_ai searchLimit humanSide board =
       | Some p -> print_string "The winner is ";
                   print_player p;
                   print_endline "."
-;;
 
-let () =
-  let searchLimit =
-    try int_of_string Sys.argv.(1)
-    with Invalid_argument _ ->
-      print_endline "Usage mancala <searchLimit>";
-      exit 1;
-  in
-  init_board () |> play_vs_ai searchLimit One
 
-(* let () = *)
-(*   init_board () |> two_player_game *)
+(****************************************************************************)
+(***** Parse the commandline and start game with appropriate parameters *****)
+(****************************************************************************)
+
+let preprocess mode side numPlayouts = match mode with
+  | false -> init_board () |> two_player_game
+  | true  -> match side with
+      | 1 -> init_board () |> play_vs_ai numPlayouts One
+      | 2 -> init_board () |> play_vs_ai numPlayouts Two
+      | _ -> print_endline "The only acceptable values for $PLAYER are 1 or 2."
+
+let mode =
+  let doc = "Play against an AI." in
+  Arg.(value & flag & info ["a"] ~doc)
+
+let side =
+  let doc = "Player 1 or player 2. Player 1 always goes first. "
+          ^ "For AI games only." in
+  Arg.(value & opt int 1 & info ["p"; "player"] ~docv:"PLAYER" ~doc)
+
+let numPlayouts =
+  let doc = "The number of playouts to be performed per branch. "
+          ^ "The higher the number, the stronger the game play." in
+  Arg.(value & opt int 100 & info ["n"] ~docv:"NPLAYOUTS" ~doc)
+
+let info =
+  let doc = "A simple implementation of the mancala game" in
+  Term.info "mancala" ~doc ~exits:Term.default_exits
+
+let game_t = Term.(const preprocess $ mode $ side $ numPlayouts)
+let () = Term.exit @@ Term.eval (game_t, info)

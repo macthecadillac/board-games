@@ -2,10 +2,5 @@
 
 (executable
   ((name mancala)
-   (modules (common ai board mancala))
-   (libraries (containers))))
-
-;(executable
-;  ((name test)
-;   (modules (common ai board test))
-;   (libraries (containers oUnit))))
+   (modules (ai board common mancala))
+   (libraries (containers cmdliner))))
