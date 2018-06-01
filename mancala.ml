@@ -30,7 +30,7 @@ let rec two_player_game board = match Board.is_finished board with
   | false ->
       Printf.printf "Current player: ";
       print_player (Board.curr_player board);
-      print_newline ();
+      print_string "\n\n";
       Board.print board;
       let n = acquire_input () in
       (match Board.remove_pieces n board with
