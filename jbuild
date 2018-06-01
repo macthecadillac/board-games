@@ -1,5 +1,11 @@
 (jbuild_version 1)
 
 (executable
- ((name mancala)
-  (libraries (containers))))
+  ((name mancala)
+   (modules (common ai board mancala))
+   (libraries (containers))))
+
+;(executable
+;  ((name test)
+;   (modules (common ai board test))
+;   (libraries (containers oUnit))))

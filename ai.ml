@@ -23,15 +23,13 @@ module Favorability = struct
 end
 
 type sim_mode =
-  | Manual of Index.t
+  | All of Index.t
   | Random
 
 let available_moves board =
-  let nList = List.init 6 (fun x -> Index.of_int x) in
-  let boardConfigs =
-    List.map (fun x -> Mechanics.remove_pieces x board) nList in
   let nListFiltered, boardConfigsFiltered =
-    List.combine nList boardConfigs
+    List.init 6 (fun x -> Index.of_int x)
+      |> List.map (fun x -> x, Board.remove_pieces x board)
       |> List.filter (fun x -> match x with
                       | (_, Some _) -> true
                       | (_, None)   -> false)
@@ -44,22 +42,22 @@ let random_move availableMoves =
   Random.run state
 
 let rec random_playout mode player board =
-  match Mechanics.is_finished board with
-  | true  -> (match Mechanics.winner_is board with
+  match Board.is_finished board with
+  | true  -> (match Board.winner_is board with
       | None   -> Favorability.Indecisive
       | Some p -> (match p, player with
           | One, One | Two, Two -> Favorability.Positive
           | _                   -> Favorability.Negative))
   | false -> match mode with
-      | Random   ->
+      | Random ->
           let availableMoves = available_moves board in
           let n, (count, board) = random_move availableMoves in
-          let newBoard = Mechanics.play n count board in
+          let newBoard = Board.dist (Index.inc n) count board in
           random_playout Random player newBoard
-      | Manual n -> match Mechanics.remove_pieces n board with
+      | All n  -> match Board.remove_pieces n board with
           | None                -> Favorability.Indecisive
           | Some (count, board) ->
-              let newBoard = Mechanics.play n count board in
+              let newBoard = Board.dist (Index.inc n) count board in
               random_playout Random player newBoard
 
 let compute_favorability searchLimit player board =
@@ -67,7 +65,7 @@ let compute_favorability searchLimit player board =
     if sl = 0 then favorability
     else let fav =
       List.init 6 (fun x -> Index.of_int x)
-        |> List.map (fun n -> random_playout (Manual n) player board)
+        |> List.map (fun n -> random_playout (All n) player board)
         |> List.map2 (fun f0 f -> match f with
                       | Favorability.Positive   -> Favorability.promote f0
                       | Favorability.Negative   -> Favorability.demote f0
