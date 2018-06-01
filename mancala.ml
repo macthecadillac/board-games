@@ -86,12 +86,12 @@ let rec play_vs_ai searchLimit humanSide board =
 (***** Parse the commandline and start game with appropriate parameters *****)
 (****************************************************************************)
 
-let preprocess mode side numPlayouts = match mode with
+let launch_game mode side numPlayouts = match mode with
   | false -> init_board () |> two_player_game
   | true  -> match side with
       | 1 -> init_board () |> play_vs_ai numPlayouts One
       | 2 -> init_board () |> play_vs_ai numPlayouts Two
-      | _ -> print_endline "The only acceptable values for $PLAYER are 1 or 2."
+      | _ -> print_endline "The only acceptable values for PLAYER are 1 or 2."
 
 let mode =
   let doc = "Play against an AI." in
@@ -111,5 +111,5 @@ let info =
   let doc = "A simple implementation of the mancala game" in
   Term.info "mancala" ~doc ~exits:Term.default_exits
 
-let game_t = Term.(const preprocess $ mode $ side $ numPlayouts)
+let game_t = Term.(const launch_game $ mode $ side $ numPlayouts)
 let () = Term.exit @@ Term.eval (game_t, info)
