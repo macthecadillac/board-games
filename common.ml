@@ -1,5 +1,8 @@
 open Containers
 
+module Count = Abstype.MakeMInt (Abstype.I)
+module Index = Abstype.MakeMInt (Abstype.I)
+
 type player =
   | One
   | Two
@@ -11,26 +14,6 @@ let switch_player = function
 let print_player = function
   | One -> Printf.printf "%s" "player 1"
   | Two -> Printf.printf "%s" "player 2"
-
-module Index = struct
-  type t = int
-  let to_int n = n
-  let of_int n = n
-  let inc n = to_int n |> (+) 1 |> of_int
-  let dec n = to_int n - 1 |> of_int
-  let (+) a b = to_int a + (to_int b) |> of_int
-  let (-) a b = to_int a - (to_int b) |> of_int
-end
-
-module Count = struct
-  type t = int
-  let to_int n = n
-  let of_int n = n
-  let inc n = to_int n |> (+) 1 |> of_int
-  let dec n = to_int n - 1 |> of_int
-  let (+) a b = to_int a + (to_int b) |> of_int
-  let (-) a b = to_int a - (to_int b) |> of_int
-end
 
 module HalfBoard = struct
   type t = {
@@ -89,9 +72,11 @@ module HalfBoard = struct
     let rawRepr = match halfBoard.player with
     | One -> halfBoard.holes
     | Two -> Array.rev halfBoard.holes in
-    Array.fold_right (fun b a -> string_of_int (Count.to_int b) ^ "  " ^ a)
-                     rawRepr ""
-    |> (^) "  "
+    let pad b a =
+      let cnt = Count.to_int b in
+      if cnt < 10 then string_of_int cnt ^ "   " ^ a
+      else string_of_int cnt ^ "  " ^ a
+    in "  " ^ (Array.fold_right pad rawRepr "")
 end
 
 type side =

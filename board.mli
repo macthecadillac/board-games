@@ -23,6 +23,8 @@ val switch_sides : t -> t
 val remove_pieces : Common.Index.t -> t ->
   (Common.Count.t * t) option
 
+val available_moves : t -> (Common.Index.t * (Common.Count.t * t)) list
+
 val dist : Common.Index.t -> Common.Count.t -> t -> t
 
 val is_finished : t -> bool

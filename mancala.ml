@@ -1,4 +1,3 @@
-(* TODO: Add command line arguments using michipili/getopts *)
 open Containers
 open Common
 open Cmdliner
@@ -50,7 +49,7 @@ let rec two_player_game board = match Board.is_finished board with
                   print_player p;
                   print_endline "."
 
-let rec play_vs_ai searchLimit humanSide board =
+let rec play_vs_ai searchLimit humanSide aifun board =
   let currSide = Board.curr_player board in
   match Board.is_finished board with
   | false -> (match humanSide, currSide with
@@ -63,16 +62,19 @@ let rec play_vs_ai searchLimit humanSide board =
               print_endline "\nAfter your move:\n";
               Board.print b;
               print_endline "\n================================\n";
-              play_vs_ai searchLimit humanSide b
+              play_vs_ai searchLimit humanSide aifun b
           | None                   -> print_endline "\nThe bowl is empty!\n";
-                                      play_vs_ai searchLimit humanSide board)
+                                      play_vs_ai searchLimit humanSide
+                                                 aifun board)
       | _ ->
-        let aiMove = Ai.most_favored_move searchLimit currSide board in
+        let aiMove = aifun searchLimit currSide board in
+        (* Printf.printf "%i\n" (Index.to_int aiMove); *)
         (match Board.remove_pieces aiMove board with
           | Some (count, newBoard) ->
               let b = Board.dist (Index.inc aiMove) count newBoard in
-              play_vs_ai searchLimit humanSide b
-          | None                   -> ())) (* Impossible branch *)
+              play_vs_ai searchLimit humanSide aifun b
+          | None                   ->
+              print_endline "Something is wrong")) (* Impossible branch *)
   | true  ->
       print_tally board;
       match Board.winner_is board with
@@ -86,30 +88,47 @@ let rec play_vs_ai searchLimit humanSide board =
 (***** Parse the commandline and start game with appropriate parameters *****)
 (****************************************************************************)
 
-let launch_game mode side numPlayouts = match mode with
-  | false -> init_board () |> two_player_game
-  | true  -> match side with
-      | 1 -> init_board () |> play_vs_ai numPlayouts One
-      | 2 -> init_board () |> play_vs_ai numPlayouts Two
-      | _ -> print_endline "The only acceptable values for PLAYER are 1 or 2."
+let launch_game mode isMiniMax humanSecond nplayouts searchDepth =
+  let open Ai in
+  let game =
+    match mode with
+    | false -> two_player_game
+    | true  ->
+        match isMiniMax, humanSecond with
+        | false, false -> play_vs_ai searchDepth One MCSearch.most_favored_move
+        | false, true  -> play_vs_ai searchDepth Two MCSearch.most_favored_move
+        | true, false  -> play_vs_ai nplayouts One MiniMax.most_favored_move
+        | true, true   -> play_vs_ai nplayouts Two MiniMax.most_favored_move
+  in game (init_board ())
 
 let mode =
   let doc = "Play against an AI." in
   Arg.(value & flag & info ["a"] ~doc)
 
-let side =
-  let doc = "Player 1 or player 2. Player 1 always goes first. "
-          ^ "For AI games only." in
-  Arg.(value & opt int 1 & info ["p"; "player"] ~docv:"PLAYER" ~doc)
+let isMiniMax =
+  let doc = "Opt for the Minimax AI." in
+  Arg.(value & flag & info ["m"] ~doc)
 
-let numPlayouts =
-  let doc = "The number of playouts to be performed per branch. "
-          ^ "The higher the number, the stronger the game play." in
-  Arg.(value & opt int 200 & info ["n"] ~docv:"NPLAYOUTS" ~doc)
+let humanSecond =
+  let doc = "Let the AI make the first move." in
+  Arg.(value & flag & info ["s"] ~doc)
+
+let nplayouts =
+  let doc = "The number of playouts to be performed per branch with "
+          ^ "the Monte Carlo AI. The higher the number, the stronger "
+          ^ "the game play." in
+  Arg.(value & opt int 30 & info ["n"] ~docv:"NPLAYOUTS" ~doc)
+
+let searchDepth =
+  let doc = "The search depth of the minimax algorithm. The deeper down "
+          ^ "the game tree the AI searches, the stronger the game play." in
+  Arg.(value & opt int 6 & info ["d"] ~docv:"SEARCHDEPTH" ~doc)
 
 let info =
   let doc = "A simple implementation of the mancala game" in
   Term.info "mancala" ~doc ~exits:Term.default_exits
 
-let game_t = Term.(const launch_game $ mode $ side $ numPlayouts)
+let game_t =
+  Term.(const launch_game $ mode $ isMiniMax $ humanSecond $ nplayouts $
+        searchDepth)
 let () = Term.exit @@ Term.eval (game_t, info)

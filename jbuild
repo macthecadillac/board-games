@@ -2,5 +2,5 @@
 
 (executable
   ((name mancala)
-   (modules (ai board common mancala))
+   (modules (ai abstype board common mancala))
    (libraries (containers cmdliner))))

@@ -35,6 +35,17 @@ let remove_pieces n board =
   if Count.to_int count > 0 then Some (count, set_curr_side currSide board)
   else None
 
+let available_moves board =
+  let nListFiltered, boardConfigsFiltered =
+    List.init 6 (fun x -> Index.of_int x)
+      |> List.map (fun x -> x, remove_pieces x board)
+      |> List.filter (fun x -> match x with
+                      | (_, Some _) -> true
+                      | (_, None)   -> false)
+      |> List.split in
+  List.filter_map (fun x -> x) boardConfigsFiltered
+    |> List.combine nListFiltered
+                
 let rec dist n count board =
   let module H = HalfBoard in
   let module I = Index in
@@ -104,7 +115,7 @@ let print b =
   Printf.printf "    ";
   print_endline sideTwoRepr;
   let spaces = (String.repeat " " boardLen) in
-  Printf.printf "%i    %s    %i\n"
+  Printf.printf "%i    %s  %i\n"
                 (sideTwoTally |> Count.to_int)
                 spaces
                 (sideOneTally |> Count.to_int);
