@@ -57,6 +57,7 @@ module MCSearch = struct
     let state = Random.pick_list availableMoves in
     Random.run state
 
+  (* TODO: abstract out all the game specific functions *)
   let rec random_playout mode player board =
     match Board.is_finished board with
     | true  -> (match Board.winner_is board with
@@ -76,7 +77,7 @@ module MCSearch = struct
                 let newBoard = Board.dist (Index.inc n) count board in
                 random_playout Random player newBoard
 
-  (* TODO: perhaps clean this up a bit *)
+  (* TODO: abstract out all the game specific functions *)
   let expand_to_leaves levels player board =
     let module T = Tree in
     let rec aux depth player iboard =
@@ -129,8 +130,8 @@ module MCSearch = struct
       | Tree.Node (i, l) -> i, default (* Inaccessible branch in this context *)
     in
 
-    (* expand 3 levels down the game tree *)
-    let tree = expand_to_leaves 3 player board
+    (* expand 4 levels down the game tree *)
+    let tree = expand_to_leaves 4 player board
       |> compute_favorability searchLimit player
       |> Tree.map (fun (f, _) -> f) in (* filters out only the favorabilities *)
     let moves = match tree with
