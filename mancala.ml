@@ -15,7 +15,7 @@ let print_tally halfBoard =
   aux (Board.other_side talliedBoard)
 
 let rec acquire_input () =
-  print_string "\nEnter your move (0-5): ";
+  print_string "\nEnter your move (1-6): ";
   let humanMove =
     try read_int () - 1 |> Index.of_int
     with Failure _ ->
