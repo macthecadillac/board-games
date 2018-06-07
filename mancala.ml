@@ -17,7 +17,7 @@ let print_tally halfBoard =
 let rec acquire_input () =
   print_string "\nEnter your move (0-5): ";
   let humanMove =
-    try read_int () |> Index.of_int
+    try read_int () - 1 |> Index.of_int
     with Failure _ ->
       print_endline "Invalid input.";
       acquire_input () in
@@ -72,7 +72,8 @@ let rec play_vs_ai searchLimit humanSide aifun board =
       | _ ->
           let aiMove = aifun searchLimit currSide board in
           let newBoard = Board.move aiMove board in
-          print_endline "\nAI move:\n";
+          print_endline "\nAI ";
+          Index.to_int aiMove + 1 |> Printf.printf " move: %i\n\n";
           Board.print newBoard;
           play_vs_ai searchLimit humanSide aifun newBoard)
   | true  ->
@@ -91,7 +92,7 @@ let rec ai_vs_ai searchLimit aifun board =
       let newBoard = Board.move aiMove board in
       print_string "\nAI ";
       Board.curr_player board |> print_player;
-      Index.to_int aiMove |> Printf.printf " move: %i\n\n";
+      Index.to_int aiMove + 1 |> Printf.printf " move: %i\n\n";
       Board.print newBoard;
       ai_vs_ai searchLimit aifun newBoard
   | true  ->
