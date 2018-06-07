@@ -24,7 +24,7 @@ let bump_hole_curr n b =
 let bump_hole_other n b =
   { b with otherSide = HalfBoard.bump_hole n b.otherSide }
 
-let bump_tally b = 
+let bump_tally b =
   { b with currSide = HalfBoard.bump_tally (Count.of_int 1) b.currSide }
 
 let switch_sides board =
@@ -35,17 +35,6 @@ let remove_pieces n board =
   if Count.to_int count > 0 then Some (count, set_curr_side currSide board)
   else None
 
-let available_moves board =
-  let nListFiltered, boardConfigsFiltered =
-    List.init 6 (fun x -> Index.of_int x)
-      |> List.map (fun x -> x, remove_pieces x board)
-      |> List.filter (fun x -> match x with
-                      | (_, Some _) -> true
-                      | (_, None)   -> false)
-      |> List.split in
-  List.filter_map (fun x -> x) boardConfigsFiltered
-    |> List.combine nListFiltered
-                
 let rec dist n count board =
   let module H = HalfBoard in
   let module I = Index in
@@ -63,7 +52,7 @@ let rec dist n count board =
       if i <= 5 then dispense nextN nextCnt (bump_hole_curr indxMod board)
       else if i = 6 then dispense nextN nextCnt (bump_tally board)
       else dispense nextN nextCnt (bump_hole_other I.(indxMod - (of_int
-      7)) board) 
+      7)) board)
   in
   let finalIndx, newBoard = dispense n count board in
   (* Printf.printf "\n%i\n" (Index.to_int finalIndx); *)
@@ -79,6 +68,21 @@ let rec dist n count board =
     else switch_sides newBoard
   else if I.to_int finalIndx = 6 then newBoard
   else switch_sides newBoard
+
+let move indx board =
+  match remove_pieces indx board with
+      None            -> print_endline "Empty pit!"; board
+    | Some (count, b) -> dist (Index.inc indx) count b
+
+let available_moves board =
+  let nListFiltered, _ =
+    List.init 6 (fun x -> Index.of_int x)
+      |> List.map (fun x -> x, remove_pieces x board)
+      |> List.filter (fun x -> match x with
+                        (_, Some _) -> true
+                      | (_, None)   -> false)
+      |> List.split in
+  nListFiltered
 
 let is_finished board =
   HalfBoard.is_empty board.currSide || HalfBoard.is_empty board.otherSide
@@ -103,7 +107,7 @@ let winner_is board =
 let print b =
   let sideOneRepr, sideTwoRepr, sideOneTally, sideTwoTally =
     match curr_player b with
-    | One ->
+      One ->
         HalfBoard.holes_repr b.currSide, HalfBoard.holes_repr b.otherSide,
         HalfBoard.get_tally b.currSide, HalfBoard.get_tally
     b.otherSide

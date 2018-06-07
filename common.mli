@@ -14,6 +14,9 @@ module Index : sig
   val dec : t -> t
   val (+) : t -> t -> t
   val (-) : t -> t -> t
+  val (>) : t -> t -> bool
+  val (<) : t -> t -> bool
+  val (=) : t -> t -> bool
 end
 
 module Count : sig
@@ -24,6 +27,9 @@ module Count : sig
   val dec : t -> t
   val (+) : t -> t -> t
   val (-) : t -> t -> t
+  val (>) : t -> t -> bool
+  val (<) : t -> t -> bool
+  val (=) : t -> t -> bool
 end
 
 module HalfBoard : sig
