@@ -48,7 +48,7 @@ module HalfBoard = struct
     let holes = Array.map (fun x -> Count.(x + of_int 1)) newHalfBoard.holes in
     { newHalfBoard with holes }
 
-  let nth halfBoard i = halfBoard.holes.(Index.to_int i)
+  let nth halfBoard indx = halfBoard.holes.(Index.to_int indx)
 
   let is_empty halfBoard =
     Array.fold (fun a b -> Count.to_int b = 0 && a) true halfBoard.holes
@@ -78,8 +78,3 @@ module HalfBoard = struct
       else string_of_int cnt ^ "  " ^ a
     in "  " ^ (Array.fold_right pad rawRepr "")
 end
-
-type side =
-  | This
-  | Other
-  | Neither

@@ -55,8 +55,3 @@ module HalfBoard : sig
   
   val holes_repr : t -> String.t
 end
-
-type side =
-  | This
-  | Other
-  | Neither
