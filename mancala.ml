@@ -33,8 +33,7 @@ let rec two_player_game board = match Board.is_finished board with
       print_string "\n\n";
       Board.print board;
       let n = acquire_input () in
-      let availableMoves = Board.available_moves board in
-      (match List.mem ~eq:Index.(=) n availableMoves with
+      (match Board.is_valid_move n board with
           true  ->
             let newBoard = Board.move n board in
             print_endline "\nAfter your move:\n";
@@ -59,8 +58,7 @@ let rec play_vs_ai searchLimit humanSide aifun board =
           print_endline "\n================================\n";
           Board.print board;
           let n = acquire_input () in
-          let availableMoves = Board.available_moves board in
-          (match List.mem ~eq:Index.(=) n availableMoves with
+          (match Board.is_valid_move n board with
               true  ->
                 let newBoard = Board.move n board in
                 print_endline "\nAfter your move:\n";
@@ -113,16 +111,16 @@ let launch_game mode aivai isMiniMax humanSecond nplayouts searchDepth =
   let open Ai in
   let game =
     match aivai with
-      true  -> ai_vs_ai searchDepth MCSearch.most_favored_move
+      true  -> ai_vs_ai nplayouts MCSearch.most_favored_move
     | false ->
       match mode with
         false -> two_player_game
       | true  ->
           match isMiniMax, humanSecond with
-            false, false -> play_vs_ai searchDepth One MCSearch.most_favored_move
-          | false, true  -> play_vs_ai searchDepth Two MCSearch.most_favored_move
-          | true, false  -> play_vs_ai nplayouts One MiniMax.most_favored_move
-          | true, true   -> play_vs_ai nplayouts Two MiniMax.most_favored_move
+            false, false -> play_vs_ai nplayouts One MCSearch.most_favored_move
+          | false, true  -> play_vs_ai nplayouts Two MCSearch.most_favored_move
+          | true, false  -> play_vs_ai searchDepth One MiniMax.most_favored_move
+          | true, true   -> play_vs_ai searchDepth Two MiniMax.most_favored_move
   in game (init_board ())
 
 let mode =
