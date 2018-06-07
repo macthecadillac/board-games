@@ -64,9 +64,9 @@ let rec play_vs_ai searchLimit humanSide aifun board =
                 print_endline "\nAfter your move:\n";
                 Board.print newBoard;
                 print_endline "\n================================\n";
-                two_player_game newBoard
+                play_vs_ai searchLimit humanSide aifun newBoard
             | false -> print_endline "\nThe bowl is empty!";
-                       two_player_game board)
+                       play_vs_ai searchLimit humanSide aifun board)
       | _ ->
           let aiMove = aifun searchLimit currSide board in
           let newBoard = Board.move aiMove board in
