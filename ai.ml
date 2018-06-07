@@ -136,8 +136,8 @@ module MCSearch = struct
       | Tree.Node (i, l) -> i, default (* Inaccessible branch in this context *)
     in
 
-    (* expand 4 levels down the game tree *)
-    let tree = expand_to_leaves 4 player board
+    (* expand 3 levels down the game tree *)
+    let tree = expand_to_leaves 3 player board
       |> compute_favorability searchLimit player
       |> Tree.map (fun (f, _) -> f) in (* filters out only the favorabilities *)
     let moves = match tree with

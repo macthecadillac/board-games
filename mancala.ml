@@ -1,4 +1,3 @@
-open Containers
 open Common
 open Cmdliner
 
@@ -70,8 +69,7 @@ let rec play_vs_ai searchLimit humanSide aifun board =
       | _ ->
           let aiMove = aifun searchLimit currSide board in
           let newBoard = Board.move aiMove board in
-          print_endline "\nAI ";
-          Index.to_int aiMove + 1 |> Printf.printf " move: %i\n\n";
+          Index.to_int aiMove + 1 |> Printf.printf "\nAI MOVE: %i\n\n";
           Board.print newBoard;
           play_vs_ai searchLimit humanSide aifun newBoard)
   | true  ->
@@ -143,7 +141,7 @@ let nplayouts =
   let doc = "The number of playouts to be performed per branch with "
           ^ "the Monte Carlo AI. The higher the number, the stronger "
           ^ "the game play." in
-  Arg.(value & opt int 20 & info ["n"] ~docv:"NPLAYOUTS" ~doc)
+  Arg.(value & opt int 30 & info ["n"] ~docv:"NPLAYOUTS" ~doc)
 
 let searchDepth =
   let doc = "The search depth of the minimax algorithm. The deeper down "
