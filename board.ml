@@ -74,15 +74,19 @@ let move indx board =
       None            -> print_endline "Empty pit!"; board
     | Some (count, b) -> dist (Index.inc indx) count b
 
+let is_valid_move indx board =
+  match Count.to_int (HalfBoard.nth board.currSide indx) with
+    0 -> false
+  | _ -> true
+
 let available_moves board =
-  let nListFiltered, _ =
-    List.init 6 (fun x -> Index.of_int x)
-      |> List.map (fun x -> x, remove_pieces x board)
-      |> List.filter (fun x -> match x with
-                        (_, Some _) -> true
-                      | (_, None)   -> false)
-      |> List.split in
-  nListFiltered
+  let rec filter indx =
+    if Index.to_int indx > 5 then []
+    else
+      match is_valid_move indx board with
+        true  -> indx :: (filter (Index.inc indx))
+      | false -> filter (Index.inc indx) in
+  filter (Index.of_int 0)
 
 let is_finished board =
   HalfBoard.is_empty board.currSide || HalfBoard.is_empty board.otherSide

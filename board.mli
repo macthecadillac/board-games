@@ -27,6 +27,8 @@ val dist : Common.Index.t -> Common.Count.t -> t -> t
 
 val move : Common.Index.t -> t -> t
 
+val is_valid_move : Common.Index.t -> t -> bool
+
 val available_moves : t -> Common.Index.t list
 
 val is_finished : t -> bool

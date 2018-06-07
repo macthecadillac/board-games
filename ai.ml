@@ -76,7 +76,7 @@ module MCSearch = struct
             let n = random_move availableMoves in
             let newBoard = Board.move n board in
             random_playout Random player newBoard
-        | Manual n  -> match List.mem ~eq:Index.(=) n availableMoves with
+        | Manual n  -> match Board.is_valid_move n board with
               false -> Favorability.Indecisive
             | true  ->
                 let newBoard = Board.move n board in
@@ -107,8 +107,9 @@ module MCSearch = struct
             in T.Node (indx, aux2 availableMoves)
     in aux levels player (Index.of_int 0) board
 
-  let rec compute_favorability sl player tree =
+  let rec compute_favorability searchLimit player tree =
     let rec random_play sl (f0, b) =
+      (* Printf.printf "%i " sl; *)
       if sl = 0 then f0, b
       else
         let f =
@@ -118,7 +119,7 @@ module MCSearch = struct
           | Favorability.Indecisive -> Favorability.mote f0 in
         random_play (sl - 1) (f, b)
     in
-    Tree.map (random_play sl) tree
+    Tree.map (random_play searchLimit) tree
 
   let most_favored_move searchLimit player board =
     let module F = Favorability in
