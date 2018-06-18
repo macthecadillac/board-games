@@ -7,6 +7,7 @@ end
 module type MMInt =
   functor (M : MInt) -> sig
     type t
+    val init : unit -> t
     val to_int : t -> int
     val of_int : int -> t
     val inc : t -> t
@@ -22,6 +23,7 @@ module MakeMInt : MMInt =
   functor (M : MInt) -> struct
     open M
     type t = M.t
+    let init () = M.of_int 0
     let of_int = M.of_int
     let to_int = M.to_int
     let inc n = to_int n |> (+) 1 |> of_int
