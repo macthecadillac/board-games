@@ -155,7 +155,6 @@ end
 module MiniMax = struct
   module Favorability = Abstype.MakeMInt (Abstype.I)
 
-  (* FIXME: Needs revision for it to be truly minimax *)
   let scorer aiPlayer board = match Board.is_finished board with
       true  -> (match Board.winner_is board with
           None   -> Favorability.of_int 0
@@ -163,19 +162,27 @@ module MiniMax = struct
               One, One | Two, Two -> Favorability.of_int 1_000_000_000
             | _                   -> Favorability.of_int (-1_000_000_000)))
     | false ->
-        let scoreDiff =
-          (Board.curr_side board |> HalfBoard.get_tally |> Count.to_int)
-        - (Board.other_side board |> HalfBoard.get_tally |> Count.to_int) in
+        let get_score hb = HalfBoard.get_tally hb |> Count.to_int in
+        let relScore =
+          (Board.curr_side board |> get_score)
+        - (Board.other_side board |> get_score) in
         match aiPlayer, Board.curr_player board with
-          One, One | Two, Two -> Favorability.of_int scoreDiff
-        | _                   -> (-1) * scoreDiff |> Favorability.of_int
+          One, One | Two, Two -> Favorability.of_int relScore
+        | _                   -> (-1) * relScore |> Favorability.of_int
 
-  let pick_max a b =
+  let max_indx a b =
     let _, fA = a and _, fB = b in
     Favorability.(
       if fA > fB then a
       (* pick one at random if both have the same favorability *)
       else if fA = fB then let r = Random.pick_list [a; b] in Random.run r
+      else b
+    )
+
+  let pick_max a b =
+    Favorability.(
+      if a > b then a
+      else if a = b then let r = Random.pick_list [a; b] in Random.run r
       else b
     )
 
@@ -194,8 +201,8 @@ module MiniMax = struct
         |> compute_favorability aiPlayer in
     let moves = match tree with
         Tree.Leaf _ as l -> [l]
-      | Tree.Node (_, l) -> List.map (Tree.collapse F.(+) (F.init ())) l in
+      | Tree.Node (_, l) -> List.map (Tree.collapse pick_max (F.init ())) l in
     let unpacked_branches = List.map (unpack_leaves (F.init ())) moves in
-    let indx, _ = List.fold_left pick_max (List.hd unpacked_branches) unpacked_branches
+    let indx, _ = List.fold_left max_indx (List.hd unpacked_branches) unpacked_branches
     in indx
 end
