@@ -6,6 +6,9 @@ type t = {
   otherSide : HalfBoard.t;
 }
 
+let copy board = { currSide = HalfBoard.copy board.currSide;
+                   otherSide = HalfBoard.copy board.otherSide }
+
 let build currSide otherSide = { currSide; otherSide }
 
 let curr_player board = HalfBoard.get_player board.currSide
@@ -31,7 +34,8 @@ let switch_sides board =
   { currSide = board.otherSide; otherSide = board.currSide }
 
 let remove_pieces n board =
-  let count, currSide = HalfBoard.rm_pieces n (curr_side board) in
+  let oldCurrSide = curr_side board |> HalfBoard.copy in
+  let count, currSide = HalfBoard.rm_pieces n oldCurrSide in
   if Count.to_int count > 0 then Some (count, set_curr_side currSide board)
   else None
 
@@ -54,7 +58,7 @@ let rec dist n count board =
       else dispense nextN nextCnt (bump_hole_other I.(indxMod - (of_int
       7)) board)
   in
-  let finalIndx, newBoard = dispense n count board in
+  let finalIndx, newBoard = dispense n count (copy board) in
   (* Printf.printf "\n%i\n" (Index.to_int finalIndx); *)
   if I.to_int finalIndx <= 5 then
     if C.to_int (H.get_hole finalIndx (curr_side newBoard)) = 1 then

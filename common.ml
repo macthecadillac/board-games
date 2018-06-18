@@ -30,43 +30,38 @@ module HalfBoard = struct
   let get_tally halfBoard = halfBoard.tally
   let get_hole indx halfBoard = halfBoard.holes.(Index.to_int indx)
   let set_hole c indx halfBoard =
-    let newHalfBoard = copy halfBoard in
-    newHalfBoard.holes.(Index.to_int indx) <- c;
-    newHalfBoard
+    halfBoard.holes.(Index.to_int indx) <- c;
+    halfBoard
   let bump_hole indx halfBoard =
     let i = Index.to_int indx in
-    let newHalfBoard = copy halfBoard in
-    newHalfBoard.holes.(i) <- Count.inc (newHalfBoard.holes.(i));
-    newHalfBoard
+    halfBoard.holes.(i) <- Count.inc (halfBoard.holes.(i));
+    halfBoard
   let zero_hole = set_hole (Count.of_int 0)
 
   let bump_tally n halfBoard = { halfBoard with
                                  tally = Count.(halfBoard.tally + n) }
   let update_tally tally halfBoard = { halfBoard with tally }
   let bump_all_holes halfBoard =
-    let newHalfBoard = copy halfBoard in
-    let holes = Array.map (fun x -> Count.(x + of_int 1)) newHalfBoard.holes in
-    { newHalfBoard with holes }
+    let holes = Array.map (fun x -> Count.(x + of_int 1)) halfBoard.holes in
+    { halfBoard with holes }
 
   let nth halfBoard indx = halfBoard.holes.(Index.to_int indx)
 
   let is_empty halfBoard =
     Array.fold (fun a b -> Count.to_int b = 0 && a) true halfBoard.holes
 
-  let clear_board halfBoard =
-    let newHalfBoard = copy halfBoard in {
-      newHalfBoard with
-      tally = Count.(newHalfBoard.tally +
-                     Array.fold_right (+) newHalfBoard.holes (of_int 0));
-      holes = Array.map (fun x -> Count.of_int 0) newHalfBoard.holes;
+  let clear_board halfBoard = {
+      halfBoard with
+      tally = Count.(halfBoard.tally +
+                     Array.fold_right (+) halfBoard.holes (of_int 0));
+      holes = Array.map (fun x -> Count.of_int 0) halfBoard.holes;
   }
 
   let rm_pieces n halfBoard =
     let n = Index.to_int n in
-    let newHalfBoard = copy halfBoard in
-    let count = newHalfBoard.holes.(n) in
-    newHalfBoard.holes.(n) <- Count.of_int 0;
-    count, { newHalfBoard with holes = newHalfBoard.holes }
+    let count = halfBoard.holes.(n) in
+    halfBoard.holes.(n) <- Count.of_int 0;
+    count, { halfBoard with holes = halfBoard.holes }
 
   let holes_repr halfBoard =
     let rawRepr = match halfBoard.player with

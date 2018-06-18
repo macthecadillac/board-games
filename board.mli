@@ -2,6 +2,8 @@ type t
 
 val build : Common.HalfBoard.t -> Common.HalfBoard.t -> t
 
+val copy : t -> t
+
 val curr_player : t -> Common.player
 
 val curr_side : t -> Common.HalfBoard.t

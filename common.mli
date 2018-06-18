@@ -36,6 +36,7 @@ module HalfBoard : sig
   type t
   val init : player -> t
 
+  val copy : t -> t
   val get_player : t -> player
   val get_tally : t -> Count.t
   val get_hole : Index.t -> t -> Count.t
