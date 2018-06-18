@@ -5,7 +5,7 @@
 open Containers
 open Common
 
-module Tree = struct
+module T = struct
   type 'a t =
       Leaf of Index.t * 'a
     | Node of Index.t * 'a t list
@@ -28,6 +28,34 @@ module Tree = struct
     match tree with
         Leaf _ as l -> l
       | Node (i, l) -> Leaf (i, aux l)
+end
+
+(* TODO: make this a functor that takes module F as an argument *)
+module Tree = struct
+  include T
+  let expand_to_leaves levels player board initFav =
+    let rec aux depth player indx board =
+      if depth = 0 then T.Leaf (indx, (initFav, board))
+      else
+        match Board.available_moves board with
+          []             -> T.Leaf (indx, (initFav, board))
+        | availableMoves ->
+            let rec aux2 = function
+                []      -> []
+              | n :: tl ->
+                  let newNode =
+                    let currPlayer = Board.curr_player board in
+                    let newBoard = Board.move n board in
+                    let nextPlayer = Board.curr_player newBoard in
+                    match currPlayer, nextPlayer with
+                        One, One | Two, Two ->
+                          T.Node (n, [aux depth player indx newBoard])
+                      | _                   ->
+                          T.Node (n, [aux (depth - 1) player indx newBoard])
+                  in
+                  newNode :: (aux2 tl)
+            in T.Node (indx, aux2 availableMoves)
+    in aux levels player (Index.of_int 0) board
 end
 
 module MCSearch = struct
@@ -82,31 +110,6 @@ module MCSearch = struct
                 let newBoard = Board.move n board in
                 random_playout Random player newBoard
 
-  let expand_to_leaves levels player board =
-    let module T = Tree in
-    let rec aux depth player indx board =
-      if depth = 0 then T.Leaf (indx, (Favorability.init (), board))
-      else
-        match Board.available_moves board with
-          []             -> T.Leaf (indx, (Favorability.init (), board))
-        | availableMoves ->
-            let rec aux2 = function
-                []      -> []
-              | n :: tl ->
-                  let newNode =
-                    let currPlayer = Board.curr_player board in
-                    let newBoard = Board.move n board in
-                    let nextPlayer = Board.curr_player newBoard in
-                    match currPlayer, nextPlayer with
-                        One, One | Two, Two ->
-                          T.Node (n, [aux depth player indx newBoard])
-                      | _                   ->
-                          T.Node (n, [aux (depth - 1) player indx newBoard])
-                  in
-                  newNode :: (aux2 tl)
-            in T.Node (indx, aux2 availableMoves)
-    in aux levels player (Index.of_int 0) board
-
   let rec compute_favorability searchLimit player tree =
     let rec random_play sl (f0, b) =
       (* Printf.printf "%i " sl; *)
@@ -137,7 +140,7 @@ module MCSearch = struct
     in
 
     (* expand 3 levels down the game tree *)
-    let tree = expand_to_leaves 3 player board
+    let tree = Tree.expand_to_leaves 3 player board (Favorability.init ())
       |> compute_favorability searchLimit player
       |> Tree.map (fun (f, _) -> f) in (* filters out only the favorabilities *)
     let moves = match tree with
@@ -176,32 +179,23 @@ module MiniMax = struct
       else b
     )
 
-  let rec compute_favorability searchDepth aiPlayer board =
-    let rec aux sd aiPlayer rootIndx board =
-      (* Printf.printf "In aux at depth = %i" sd; *)
-      if sd = 0 then rootIndx, scorer aiPlayer board
-      else
-        match Board.available_moves board with
-          []                   -> rootIndx, scorer aiPlayer board
-        | _ as availableMoves  ->
-            let nextLevel = List.map (fun n ->
-                                      Board.move n board)
-                                      availableMoves in
-            let results =
-              List.map (aux (sd - 1) aiPlayer rootIndx) nextLevel in
-            List.fold_left pick_max (List.hd results) (List.tl results)
-    in
-    let rootBranches = Board.available_moves board in
-    let nextLevel = List.map (fun n ->
-                              Board.move n board)
-                              rootBranches in
-    List.map2 (aux searchDepth aiPlayer) rootBranches nextLevel
+  let rec compute_favorability aiPlayer tree =
+    let aux (_, b) = scorer aiPlayer b in
+    Tree.map aux tree
 
   let most_favored_move searchDepth aiPlayer board =
-      let entries = compute_favorability searchDepth aiPlayer board in
-      List.iter (fun (i, f) -> Printf.printf "(%i, %i)" (Index.to_int i)
-      (Favorability.to_int f)) entries;
-      print_newline ();
-      let indx, _ = List.fold_left pick_max (List.hd entries) (List.tl entries)
-      in indx
+    let module F = Favorability in
+    let unpack_leaves default = function
+        Tree.Leaf (i, a) -> i, a
+      | Tree.Node (i, l) -> i, default (* Inaccessible branch in this context *)
+    in
+
+    let tree = Tree.expand_to_leaves searchDepth aiPlayer board (F.init ())
+        |> compute_favorability aiPlayer in
+    let moves = match tree with
+        Tree.Leaf _ as l -> [l]
+      | Tree.Node (_, l) -> List.map (Tree.collapse F.(+) (F.init ())) l in
+    let unpacked_branches = List.map (unpack_leaves (F.init ())) moves in
+    let indx, _ = List.fold_left pick_max (List.hd unpacked_branches) unpacked_branches
+    in indx
 end
