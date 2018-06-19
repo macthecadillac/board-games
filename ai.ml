@@ -7,27 +7,27 @@ open Common
 
 module T = struct
   type 'a t =
-      Leaf of Index.t * 'a
-    | Node of Index.t * 'a t list
+      Leaf of Index.t * player * 'a
+    | Node of Index.t * player * 'a t list
 
   (* TODO: parallelize *)
   let rec map f tree =
     let rec aux = function
         []                -> []
-      | Leaf (j, b) :: tl -> Leaf (j, f b) :: aux tl
-      | Node (j, m) :: tl -> Node (j, aux m) :: aux tl in
+      | Leaf (j, p, b) :: tl -> Leaf (j, p, f b) :: aux tl
+      | Node (j, p, m) :: tl -> Node (j, p, aux m) :: aux tl in
     match tree with
-        Leaf (i, a) -> Leaf (i, f a)
-      | Node (i, l) -> Node (i, aux l)
+        Leaf (i, p, a) -> Leaf (i, p, f a)
+      | Node (i, p, l) -> Node (i, p, aux l)
 
   let rec collapse f acc tree =
     let rec aux = function
         [] -> acc
-      | Leaf (j, b) :: tl -> f b (aux tl)
-      | Node (j, m) :: tl -> f (aux m) (aux tl) in
+      | Leaf (j, p, b) :: tl -> f b (aux tl)
+      | Node (j, p, m) :: tl -> f (aux m) (aux tl) in
     match tree with
         Leaf _ as l -> l
-      | Node (i, l) -> Leaf (i, aux l)
+      | Node (i, p, l) -> Leaf (i, p, aux l)
 end
 
 (* TODO: make this a functor that takes module F as an argument *)
@@ -35,26 +35,30 @@ module Tree = struct
   include T
   let expand_to_leaves levels player board initFav =
     let rec aux depth player indx board =
-      if depth = 0 then T.Leaf (indx, (initFav, board))
+      if depth = 0 then T.Leaf (indx, (Board.curr_player board),
+                                (initFav, board))
       else
+        let currPlayer = Board.curr_player board in
         match Board.available_moves board with
-          []             -> T.Leaf (indx, (initFav, board))
+          []             -> T.Leaf (indx, currPlayer, (initFav, board))
         | availableMoves ->
             let rec aux2 = function
                 []      -> []
               | n :: tl ->
                   let newNode =
-                    let currPlayer = Board.curr_player board in
                     let newBoard = Board.move n board in
                     let nextPlayer = Board.curr_player newBoard in
                     match currPlayer, nextPlayer with
                         One, One | Two, Two ->
-                          T.Node (n, [aux depth player indx newBoard])
+                          T.Node (n, currPlayer,
+                                  [aux depth player indx newBoard])
                       | _                   ->
-                          T.Node (n, [aux (depth - 1) player indx newBoard])
+                          T.Node (n, currPlayer,
+                                  [aux (depth - 1) player indx newBoard])
                   in
                   newNode :: (aux2 tl)
-            in T.Node (indx, aux2 availableMoves)
+            in
+            T.Node (indx, currPlayer, aux2 availableMoves)
     in aux levels player (Index.of_int 0) board
 end
 
@@ -135,8 +139,8 @@ module MCSearch = struct
     (* extract contents of a leaf with the assumption that it only receives
      * a leaf as its argument *)
     let unpack_leaves default = function
-        Tree.Leaf (i, a) -> i, a
-      | Tree.Node (i, l) -> i, default (* Inaccessible branch in this context *)
+        Tree.Leaf (i, _, a) -> i, a
+      | Tree.Node (i, _, l) -> i, default (* Inaccessible branch in this context *)
     in
 
     (* expand 3 levels down the game tree *)
@@ -144,14 +148,16 @@ module MCSearch = struct
       |> compute_favorability searchLimit player
       |> Tree.map (fun (f, _) -> f) in (* filters out only the favorabilities *)
     let moves = match tree with
-        Tree.Leaf _ as l -> [l] (* Inaccessible branch considering the code *)
-      | Tree.Node (_, l) -> List.map (Tree.collapse F.(+) (F.init ())) l in
+        Tree.Leaf _ as l    -> [l] (* Inaccessible branch considering the code *)
+      | Tree.Node (_, _, l) -> List.map (Tree.collapse F.(+) (F.init ())) l in
     let unpacked_branches = List.map (unpack_leaves (F.init ())) moves in
     let indx, _ = List.fold_left pick_max (List.hd unpacked_branches)
                                           unpacked_branches
     in indx
 end
 
+(* FIXME: Doesn't work all too well yet. Take into account of which player made
+ * which move when collapsing the game tree to make it truly minimax *)
 module MiniMax = struct
   module Favorability = Abstype.MakeMInt (Abstype.I)
 
@@ -159,8 +165,8 @@ module MiniMax = struct
       true  -> (match Board.winner_is board with
           None   -> Favorability.of_int 0
         | Some p -> (match p, aiPlayer with
-              One, One | Two, Two -> Favorability.of_int 1_000_000_000
-            | _                   -> Favorability.of_int (-1_000_000_000)))
+              One, One | Two, Two -> Favorability.of_int 1000
+            | _                   -> Favorability.of_int (-1000)))
     | false ->
         let get_score hb = HalfBoard.get_tally hb |> Count.to_int in
         let relScore =
@@ -193,15 +199,15 @@ module MiniMax = struct
   let most_favored_move searchDepth aiPlayer board =
     let module F = Favorability in
     let unpack_leaves default = function
-        Tree.Leaf (i, a) -> i, a
-      | Tree.Node (i, l) -> i, default (* Inaccessible branch in this context *)
+        Tree.Leaf (i, _, a) -> i, a
+      | Tree.Node (i, _, l) -> i, default (* Inaccessible branch in this context *)
     in
 
     let tree = Tree.expand_to_leaves searchDepth aiPlayer board (F.init ())
         |> compute_favorability aiPlayer in
     let moves = match tree with
         Tree.Leaf _ as l -> [l]
-      | Tree.Node (_, l) -> List.map (Tree.collapse pick_max (F.init ())) l in
+      | Tree.Node (_, _, l) -> List.map (Tree.collapse pick_max (F.init ())) l in
     let unpacked_branches = List.map (unpack_leaves (F.init ())) moves in
     let indx, _ = List.fold_left max_indx (List.hd unpacked_branches) unpacked_branches
     in indx
