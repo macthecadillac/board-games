@@ -22,8 +22,7 @@ val bump_tally : t -> t
 
 val switch_sides : t -> t
 
-val remove_pieces : Common.Index.t -> t ->
-  (Common.Count.t * t) option
+val remove_pieces : Common.Index.t -> t -> (Common.Count.t * t) option
 
 val dist : Common.Index.t -> Common.Count.t -> t -> t
 
