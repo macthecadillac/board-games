@@ -256,11 +256,6 @@ module MCSearch = struct
       match Favorability.is_unity fav with
       | true -> Favorability.as_float fav
       | false ->
-          (* let histWeight = *)
-          (*   0.6 -. 0.5 /. Depth.(inc depth |> to_int |> float_of_int) in *)
-          (*   (1* 0.5 in *1) *)
-          (* let mcWeight = 1. -. histWeight in *)
-          (* histWeight *. Hist.as_float hist player +. mcWeight *. Favorability.as_float fav *)
           let open Favorability in
           Hist.as_favorablity hist player
           |> weight 100 |> ( + ) fav |> as_float
@@ -271,7 +266,7 @@ module MCSearch = struct
       let _, fA = a and _, fB = b in
       (* if the favorabilities substantially differ *)
       if fA -. fB >=. 0.01 then a
-        (* pick one at random if both favorabilities as within 0.01 of one another
+      (* pick one at random if both favorabilities as within 0.01 of one another
        * so the AI is more willing to try out different moves *)
       else if abs_float (fA -. fB) <. 0.01 then
         let r = Random.pick_list [a; b] in

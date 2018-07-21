@@ -31,11 +31,7 @@ module type MMInt = functor (M : MInt) -> sig
 end
 
 module MakeMInt : MMInt =
-functor
-(M
-:
-  MInt) ->
-struct
+  functor (M : MInt) -> struct
   open M
 
   type t = M.t
