@@ -19,9 +19,9 @@ let set_curr_side currSide board = {board with currSide}
 
 let set_other_side otherSide board = {board with otherSide}
 
-let bump_hole_curr n b = {b with currSide= HalfBoard.bump_hole n b.currSide}
+let bump_pit_curr n b = {b with currSide= HalfBoard.bump_pit n b.currSide}
 
-let bump_hole_other n b = {b with otherSide= HalfBoard.bump_hole n b.otherSide}
+let bump_pit_other n b = {b with otherSide= HalfBoard.bump_pit n b.otherSide}
 
 let bump_tally b =
   {b with currSide= HalfBoard.bump_tally (Count.of_int 1) b.currSide}
@@ -47,18 +47,18 @@ let rec dist n count board =
       (* Printf.printf "%i\n" i; *)
       let indxMod = I.of_int i in
       let nextN = I.inc n and nextCnt = C.dec cnt in
-      if i <= 5 then dispense nextN nextCnt (bump_hole_curr indxMod board)
+      if i <= 5 then dispense nextN nextCnt (bump_pit_curr indxMod board)
       else if i = 6 then dispense nextN nextCnt (bump_tally board)
       else
-        dispense nextN nextCnt (bump_hole_other I.(indxMod - of_int 7) board)
+        dispense nextN nextCnt (bump_pit_other I.(indxMod - of_int 7) board)
   in
   let finalIndx, newBoard = dispense n count (copy board) in
   (* Printf.printf "\n%i\n" (Index.to_int finalIndx); *)
   if I.to_int finalIndx <= 5 then
-    if C.to_int (H.get_hole finalIndx (curr_side newBoard)) = 1 then
+    if C.to_int (H.get_pit finalIndx (curr_side newBoard)) = 1 then
       let captureIndx = I.(of_int 5 - finalIndx) in
-      let capturedPieces = H.get_hole captureIndx (other_side newBoard) in
-      let otherSide = H.zero_hole captureIndx (other_side newBoard)
+      let capturedPieces = H.get_pit captureIndx (other_side newBoard) in
+      let otherSide = H.zero_pit captureIndx (other_side newBoard)
       and currSide = H.bump_tally capturedPieces (curr_side newBoard) in
       newBoard |> set_curr_side currSide |> set_other_side otherSide
       |> switch_sides
@@ -110,13 +110,13 @@ let print b =
   let sideOneRepr, sideTwoRepr, sideOneTally, sideTwoTally =
     match curr_player b with
     | One ->
-        ( HalfBoard.holes_repr b.currSide
-        , HalfBoard.holes_repr b.otherSide
+        ( HalfBoard.pits_repr b.currSide
+        , HalfBoard.pits_repr b.otherSide
         , HalfBoard.get_tally b.currSide
         , HalfBoard.get_tally b.otherSide )
     | Two ->
-        ( HalfBoard.holes_repr b.otherSide
-        , HalfBoard.holes_repr b.currSide
+        ( HalfBoard.pits_repr b.otherSide
+        , HalfBoard.pits_repr b.currSide
         , HalfBoard.get_tally b.otherSide
         , HalfBoard.get_tally b.currSide )
   in

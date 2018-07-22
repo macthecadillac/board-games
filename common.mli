@@ -63,19 +63,19 @@ module HalfBoard : sig
 
   val get_tally : t -> Count.t
 
-  val get_hole : Index.t -> t -> Count.t
+  val get_pit : Index.t -> t -> Count.t
 
-  val set_hole : Count.t -> Index.t -> t -> t
+  val set_pit : Count.t -> Index.t -> t -> t
 
-  val bump_hole : Index.t -> t -> t
+  val bump_pit : Index.t -> t -> t
 
-  val zero_hole : Index.t -> t -> t
+  val zero_pit : Index.t -> t -> t
 
   val bump_tally : Count.t -> t -> t
 
   val update_tally : Count.t -> t -> t
 
-  val bump_all_holes : t -> t
+  val bump_all_pits : t -> t
 
   val nth : t -> Index.t -> Count.t
 
@@ -85,5 +85,5 @@ module HalfBoard : sig
 
   val rm_pieces : Index.t -> t -> Count.t * t
 
-  val holes_repr : t -> String.t
+  val pits_repr : t -> String.t
 end

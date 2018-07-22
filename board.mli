@@ -14,9 +14,9 @@ val set_curr_side : Common.HalfBoard.t -> t -> t
 
 val set_other_side : Common.HalfBoard.t -> t -> t
 
-val bump_hole_other : Common.Index.t -> t -> t
+val bump_pit_other : Common.Index.t -> t -> t
 
-val bump_hole_curr : Common.Index.t -> t -> t
+val bump_pit_curr : Common.Index.t -> t -> t
 
 val bump_tally : t -> t
 
