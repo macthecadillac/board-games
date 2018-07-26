@@ -280,14 +280,14 @@ module MCSearch = struct
           (i, 0.) (* Inaccessible branch in this context *)
       | Tree.Leaf (i, _, a) ->
           let d, fh, _ = HistTree.choose_branch i histTree in
-          Printf.printf " %i=" (Index.to_int i) ;
-          Hist.print fh ;
-          Favorability.print a ;
+          (* Printf.printf " %i=" (Index.to_int i) ; *)
+          (* Hist.print fh ; *)
+          (* Favorability.print a ; *)
           (i, compute_score fh a d player)
     in
-    (* expand 3 levels down the game tree *)
+    (* expand 2 levels down the game tree *)
     let tree =
-      Tree.expand_to_leaves 3 player board (Favorability.init ())
+      Tree.expand_to_leaves 2 player board (Favorability.init ())
       |> compute_favorability searchLimit player
       |> Tree.map (fun (f, _) -> f)
     in
@@ -298,14 +298,14 @@ module MCSearch = struct
       | Tree.Node (_, _, l) -> List.map (Tree.collapse F.( + ) (F.init ())) l
     in
     let scores = List.map unpack_leaves moves in
-    print_newline () ;
-    print_string "Scores: " ;
-    List.iter
-      (fun (i, x) -> F.(Printf.printf "%i=%f " (Index.to_int i) x))
-      scores ;
-    print_newline () ;
+    (* print_newline () ; *)
+    (* print_string "Scores: " ; *)
+    (* List.iter *)
+    (*   (fun (i, x) -> F.(Printf.printf "%i=%f " (Index.to_int i) x)) *)
+    (*   scores ; *)
+    (* print_newline () ; *)
     let indx, _ = List.fold_left pick_max (List.hd scores) scores in
-    Index.to_int indx |> Printf.printf "Best move: %i\n\n" ;
+    (* Index.to_int indx |> Printf.printf "Best move: %i\n\n" ; *)
     indx
 end
 
@@ -324,10 +324,9 @@ module MiniMax = struct
         | One, One | Two, Two -> Favorability.of_int 1000
         | _ -> Favorability.of_int (-1000) )
     | false ->
-        let get_score hb = HalfBoard.get_tally hb |> Count.to_int in
         let relScore =
-          (Board.curr_side board |> get_score)
-          - (Board.other_side board |> get_score)
+          (Board.get_curr_player_tally board |> Count.to_int)
+          - (Board.get_other_player_tally board |> Count.to_int)
         in
         match (aiPlayer, Board.curr_player board) with
         | One, One | Two, Two -> Favorability.of_int relScore

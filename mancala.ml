@@ -1,19 +1,6 @@
 open Common
 open Cmdliner
 
-let init_board () = Board.build (HalfBoard.init One) (HalfBoard.init Two)
-
-let print_tally halfBoard =
-  let aux s =
-    Printf.printf "Player " ;
-    print_player (HalfBoard.get_player s) ;
-    Printf.printf " has %i pieces\n" (HalfBoard.get_tally s |> Count.to_int)
-  in
-  let talliedBoard = Board.final_tally halfBoard in
-  print_newline () ;
-  aux (Board.curr_side talliedBoard) ;
-  aux (Board.other_side talliedBoard)
-
 let rec acquire_input () =
   print_string "\nEnter your move (1-6): " ;
   let humanMove =
@@ -46,7 +33,7 @@ let two_player_game () =
             print_endline "\nThe bowl is empty!" ;
             aux board )
     | true ->
-        print_tally board ;
+        Board.print_tally board ;
         match Board.winner_is board with
         | None -> print_endline "The game is a draw."
         | Some p ->
@@ -54,7 +41,7 @@ let two_player_game () =
             print_player p ;
             print_endline "."
   in
-  let initBoard = init_board () in
+  let initBoard = Board.init () in
   aux initBoard
 
 let play_vs_ai searchLimit humanSide histFile =
@@ -87,7 +74,7 @@ let play_vs_ai searchLimit humanSide histFile =
           let _, _, nextBranch = HistTree.choose_branch aiMove histTree in
           aux searchLimit humanSide newBoard nextBranch )
     | true ->
-        print_tally board ;
+        Board.print_tally board ;
         match Board.winner_is board with
         | None -> print_endline "The game is a draw."
         | Some p ->
@@ -95,7 +82,7 @@ let play_vs_ai searchLimit humanSide histFile =
             print_player p ;
             print_endline "."
   in
-  let initBoard = init_board () in
+  let initBoard = Board.init () in
   let histTree = HistTree.load histFile in
   aux searchLimit humanSide initBoard histTree
 
@@ -114,7 +101,7 @@ let ai_vs_ai searchLimit histFile =
         let _, _, nextBranch = HistTree.choose_branch aiMove histTree in
         aux searchLimit newBoard nextBranch (aiMove :: record)
     | true ->
-        print_tally board ;
+        Board.print_tally board ;
         let winner = Board.winner_is board in
         match winner with
         | None -> print_endline "The game is a draw."
@@ -124,7 +111,7 @@ let ai_vs_ai searchLimit histFile =
             print_endline "."
   in
   let histTree = HistTree.load histFile in
-  let initBoard = init_board () in
+  let initBoard = Board.init () in
   aux searchLimit initBoard histTree []
 
 let train_ai searchLimit histFile =
@@ -138,10 +125,11 @@ let train_ai searchLimit histFile =
       let currSide = Board.curr_player board in
       match Board.is_finished board with
       | false ->
-          let aiMove = most_favored_move searchLimit currSide board histTree in
-          (* if n = 0 then Index.of_int (i mod 6) *)
-          (* else most_favored_move searchLimit currSide board histTree in *)
-          (* if n = 0 then Printf.printf "\nMandatory move: %i\n\n" (i mod 6); *)
+          let aiMove =
+            (* most_favored_move searchLimit currSide board histTree in *)
+          if n = 0 then Index.of_int (i mod 6)
+          else most_favored_move searchLimit currSide board histTree in
+          if n = 0 then Printf.printf "\nMandatory move: %i\n\n" (i mod 6);
           let newBoard = Board.move aiMove board in
           let _, _, nextBranch = HistTree.choose_branch aiMove histTree in
           aux searchLimit newBoard nextBranch (aiMove :: record) (n + 1)
@@ -149,7 +137,7 @@ let train_ai searchLimit histFile =
           let winner = Board.winner_is board in
           (winner, record)
     in
-    let initBoard = init_board () in
+    let initBoard = Board.init () in
     let winner, revRecord = aux searchLimit initBoard histTree [] 0 in
     (* records are reversed because of the way lists are constructed *)
     let record = List.rev revRecord in
@@ -192,7 +180,7 @@ let launch_game mode aivai training isMiniMax humanSecond nplayouts searchDepth
         | true, false -> () (* currently unavailable *)
         | true, true -> ()
 
-(* in game (init_board ()) *)
+(* in game (Board.init ()) *)
 
 let mode =
   let doc = "Play against the computer." in
