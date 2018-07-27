@@ -1,0 +1,4 @@
+(executables
+  (names mancala)
+  (modules ai abstype board common mancala)
+  (libraries containers cmdliner))

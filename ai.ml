@@ -285,9 +285,9 @@ module MCSearch = struct
           (* Favorability.print a ; *)
           (i, compute_score fh a d player)
     in
-    (* expand 2 levels down the game tree *)
+    (* expand 3 levels down the game tree *)
     let tree =
-      Tree.expand_to_leaves 2 player board (Favorability.init ())
+      Tree.expand_to_leaves 3 player board (Favorability.init ())
       |> compute_favorability searchLimit player
       |> Tree.map (fun (f, _) -> f)
     in

@@ -1,6 +1,0 @@
-(jbuild_version 1)
-
-(executable
-  ((name mancala)
-   (modules (ai abstype board common mancala))
-   (libraries (containers cmdliner))))
