@@ -8,8 +8,6 @@ open Containers
 open Common
 
 module T = struct
-  (* TODO: perhaps one day rewrite as the more common tree structure (also used
-   * later in the code as HistTree) *)
   type 'a t =
     | Leaf of Index.t * player * 'a
     | Node of Index.t * player * 'a t list
@@ -81,7 +79,6 @@ module Favorability : sig
   val ( + ) : t -> t -> t
   val ( > ) : t -> t -> bool
   val ( = ) : t -> t -> bool
-  val weight : int -> t -> t
   val print : t -> unit
 end = struct
   type t = { win : int; total : int }
@@ -110,8 +107,6 @@ end = struct
 
   let ( = ) a b = Float.abs (as_float a -. as_float b) <. 1e-10
 
-  let weight w a = { win = w * a.win; total = w * a.total }
-
   let print a = Printf.printf "{ win = %i; total = %i }" a.win a.total
 end
 
@@ -135,118 +130,11 @@ end = struct
     { q; total }
 end
 
-module Hist = struct
-  type t = { one : int; two : int; draw : int }
-
-  let init () = { one = 0; two = 0; draw = 0 }
-
-  let is_null a = a.one = 0 && a.two = 0
-
-  let bump a = function
-    | None -> { a with draw = a.draw + 1 }
-    | Some One -> { a with one = a.one + 1 }
-    | Some Two -> { a with two = a.two + 1 }
-
-  let as_float a player =
-    let one_sq = ((2 * a.one) + a.draw) * ((2 * a.one) + a.draw) in
-    let two_sq = ((2 * a.two) + a.draw) * ((2 * a.two) + a.draw) in
-    match player with
-    | One -> float_of_int one_sq /. float_of_int (one_sq + two_sq)
-    | Two -> float_of_int two_sq /. float_of_int (one_sq + two_sq)
-
-  let as_favorablity a p =
-    let win, total =
-      match p with
-      | One -> ((2 * a.one) + a.draw, 2 * (a.one + a.two + a.draw))
-      | Two -> ((2 * a.two) + a.draw, 2 * (a.one + a.two + a.draw))
-    in
-    Favorability.{ win; total }
-
-  let print a =
-    Printf.printf "{ one = %i; two = %i; draw = %i }" a.one a.two a.draw
-end
-
-module Depth = AbsType.MakeMInt (AbsType.I)
-
-(* TODO: a tree is efficient enough for mancala, but for other games, a graph
- * like structure would be far superior *)
-module HistTree = struct
-  (* we don't need to keep track of which player made which move because there
-   * is only one way for a given tree to be traversed. You might want to
-   * change this when switching over to graph like structures. *)
-  type t = Node of Index.t * Depth.t * Hist.t * t list
-
-  let init i n = Node (i, n, Hist.init (), [])
-
-  let depth a =
-    let rec aux d a =
-      let (Node (i, n, f, l)) = a in
-      match l with
-      | [] -> d
-      | l -> List.map (aux (d + 1)) l |> List.fold_left max 0
-    in
-    aux 0 a
-
-  let rec choose_branch i n =
-    let rec aux i d = function
-      | [] -> (d, Hist.init (), init i d)
-      | hd :: tl ->
-          let (Node (j, dd, f, _)) = hd in
-          if Index.(i = j) then (dd, f, hd) else aux i d tl
-    in
-    let (Node (_, d, _, l)) = n in
-    aux i d l
-
-  let rec update_from_last_playout winner tree record =
-    let module D = Depth in
-    let rec aux winner tree record depth =
-      match record with
-      | [] -> tree
-      | indx :: nxtMvs ->
-          let rec aux2 = function
-            | [] ->
-                let newNode =
-                  Node (indx, depth, Hist.(bump (init ()) winner), [])
-                in
-                let newsubTr = aux winner newNode nxtMvs (D.inc depth) in
-                [newsubTr]
-            | hd :: tail ->
-                let (Node (jj, dd, ff, l)) = hd in
-                if Index.(jj = indx) then
-                  let newNode = Node (jj, dd, Hist.bump ff winner, l) in
-                  let newSubTr = aux winner newNode nxtMvs (D.inc depth) in
-                  newSubTr :: tail
-                else hd :: aux2 tail
-          in
-          let (Node (j, d, f, l)) = tree in
-          Node (j, d, f, aux2 l)
-    in
-    aux winner tree record (Depth.init ())
-
-  let load s =
-    try
-      let channel = open_in_bin s in
-      let t : t = Marshal.from_channel channel in
-      close_in channel ; t
-    with Sys_error _ -> init (Index.init ()) (Depth.init ())
-
-  let save (t: t) s =
-    (* for some weird reason the file permission of 644 is represented as 422
-     * in ocaml *)
-    let channel =
-      open_out_gen [Open_binary; Open_creat; Open_wronly] 422 s
-    in
-    Marshal.to_channel channel t [] ;
-    close_out channel
-end
-
-type sim_mode = Manual of Index.t | Random
-
 let random_move availableMoves =
   let state = Random.pick_list availableMoves in
   Random.run state
 
-let rec random_playout mode player board =
+let rec random_playout player board =
   match Board.is_finished board with
   | true -> (
     match Board.winner_is board with
@@ -257,17 +145,9 @@ let rec random_playout mode player board =
       | _ -> Favorability.Negative )
   | false ->
       let availableMoves = Board.available_moves board in
-      match mode with
-      | Random ->
-          let n = random_move availableMoves in
-          let newBoard = Board.move n board in
-          random_playout Random player newBoard
-      | Manual n ->
-        match Board.is_valid_move n board with
-        | false -> Favorability.Indecisive
-        | true ->
-            let newBoard = Board.move n board in
-            random_playout Random player newBoard
+      let n = random_move availableMoves in
+      let newBoard = Board.move n board in
+      random_playout player newBoard
 
 let rec compute_favorability searchLimit player tree =
   let rec random_play sl (f0, b) =
@@ -275,7 +155,7 @@ let rec compute_favorability searchLimit player tree =
     if sl = 0 then (f0, b)
     else
       let f =
-        match random_playout Random player b with
+        match random_playout player b with
         | Favorability.Positive -> Favorability.promote f0
         | Favorability.Negative -> Favorability.demote f0
         | Favorability.Indecisive -> Favorability.mote f0
@@ -284,18 +164,9 @@ let rec compute_favorability searchLimit player tree =
   in
   Tree.map (random_play searchLimit) tree
 
-let compute_score hist fav depth player =
-  match Hist.is_null hist with
-  | true -> Favorability.as_float fav
-  | false ->
-    match Favorability.is_unity fav with
-    | true -> Favorability.as_float fav
-    | false ->
-        let open Favorability in
-        Hist.as_favorablity hist player
-        |> weight 100 |> ( + ) fav |> as_float
+let compute_score fav = Favorability.as_float fav
 
-let most_favored_move searchLimit player board histTree =
+let most_favored_move searchLimit player board =
   let module F = Favorability in
   let pick_max a b =
     let _, fA = a and _, fB = b in
@@ -311,18 +182,12 @@ let most_favored_move searchLimit player board histTree =
   (* extract contents of a leaf with the assumption that it only receives
    * a leaf as its argument *)
   let unpack_leaves = function
-    | Tree.Node (i, _, l) ->
-        (i, 0.) (* Inaccessible branch in this context *)
-    | Tree.Leaf (i, _, a) ->
-        let d, fh, _ = HistTree.choose_branch i histTree in
-        (* Printf.printf " %i=" (Index.to_int i) ; *)
-        (* Hist.print fh ; *)
-        (* Favorability.print a ; *)
-        (i, compute_score fh a d player)
+    | Tree.Node (i, _, l) -> (i, 0.) (* Inaccessible branch in this context *)
+    | Tree.Leaf (i, _, a) -> (i, compute_score a)
   in
-  (* expand 3 levels down the game tree *)
+  (* expand 2 levels down the game tree *)
   let tree =
-    Tree.expand_to_leaves 3 player board (Favorability.init ())
+    Tree.expand_to_leaves 2 player board (Favorability.init ())
     |> compute_favorability searchLimit player
     |> Tree.map (fun (f, _) -> f)
   in
