@@ -45,7 +45,7 @@ let two_player_game () =
   aux initBoard
 
 let play_vs_ai searchLimit humanSide histFile =
-  let open Ai.MCSearch in
+  let open MCTS in
   let rec aux searchLimit humanSide board histTree =
     let currSide = Board.curr_player board in
     match Board.is_finished board with
@@ -87,7 +87,7 @@ let play_vs_ai searchLimit humanSide histFile =
   aux searchLimit humanSide initBoard histTree
 
 let ai_vs_ai searchLimit histFile =
-  let open Ai.MCSearch in
+  let open MCTS in
   let rec aux searchLimit board histTree record =
     let currSide = Board.curr_player board in
     match Board.is_finished board with
@@ -115,7 +115,7 @@ let ai_vs_ai searchLimit histFile =
   aux searchLimit initBoard histTree []
 
 let train_ai searchLimit histFile =
-  let open Ai.MCSearch in
+  let open MCTS in
   let rec game i histTree =
     (* firstMove tells the program whether the current move is the first move of
      * the player. This is to ensure the program explores all possible first
@@ -162,9 +162,7 @@ let train_ai searchLimit histFile =
 (***** Parse the commandline and start game with appropriate parameters *****)
 (****************************************************************************)
 
-let launch_game mode aivai training isMiniMax humanSecond nplayouts searchDepth
-    histFile =
-  let open Ai in
+let launch_game mode aivai training humanSecond nplayouts histFile =
   match training with
   | true -> train_ai 20 histFile
   | false ->
@@ -174,11 +172,9 @@ let launch_game mode aivai training isMiniMax humanSecond nplayouts searchDepth
       match mode with
       | false -> two_player_game ()
       | true ->
-        match (isMiniMax, humanSecond) with
-        | false, false -> play_vs_ai nplayouts One histFile
-        | false, true -> play_vs_ai nplayouts Two histFile
-        | true, false -> () (* currently unavailable *)
-        | true, true -> ()
+        match humanSecond with
+        | true -> play_vs_ai nplayouts Two histFile
+        | false -> play_vs_ai nplayouts One histFile
 
 (* in game (Board.init ()) *)
 
@@ -193,10 +189,6 @@ let aivai =
 let training =
   let doc = "Train the computer player." in
   Arg.(value & flag & info ["t"] ~doc)
-
-let isMiniMax =
-  let doc = "Opt for the Minimax AI." in
-  Arg.(value & flag & info ["m"] ~doc)
 
 let humanSecond =
   let doc = "Let the computer make the first move." in
@@ -214,20 +206,12 @@ let nplayouts =
   in
   Arg.(value & opt int 30 & info ["n"] ~docv:"NPLAYOUTS" ~doc)
 
-let searchDepth =
-  let doc =
-    "The search depth of the minimax algorithm. The deeper down "
-    ^ "the game tree the AI searches, the stronger the game play."
-  in
-  Arg.(value & opt int 6 & info ["d"] ~docv:"SEARCHDEPTH" ~doc)
-
 let info =
   let doc = "A simple implementation of the mancala game" in
   Term.info "mancala" ~doc ~exits:Term.default_exits
 
 let game_t =
   let open Term in
-  const launch_game $ mode $ aivai $ training $ isMiniMax $ humanSecond
-  $ nplayouts $ searchDepth $ histFile
+  const launch_game $ mode $ aivai $ training $ humanSecond $ nplayouts $ histFile
 
 let () = Term.exit @@ Term.eval (game_t, info)

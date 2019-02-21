@@ -32,8 +32,6 @@ end
 
 module MakeMInt : MMInt =
   functor (M : MInt) -> struct
-  open M
-
   type t = M.t
 
   let init () = M.of_int 0

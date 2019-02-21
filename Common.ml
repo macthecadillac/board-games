@@ -1,6 +1,6 @@
 open Containers
-module Count = Abstype.MakeMInt (Abstype.I)
-module Index = Abstype.MakeMInt (Abstype.I)
+module Count = AbsType.MakeMInt (AbsType.I)
+module Index = AbsType.MakeMInt (AbsType.I)
 
 type player = One | Two
 

@@ -8,12 +8,9 @@ module HalfBoard : sig
   val get_player : t -> player
   val get_tally : t -> Count.t
   val get_pit : Index.t -> t -> Count.t
-  val set_pit : Count.t -> Index.t -> t -> t
   val bump_pit : Index.t -> t -> t
   val zero_pit : Index.t -> t -> t
   val bump_tally : Count.t -> t -> t
-  val update_tally : Count.t -> t -> t
-  val bump_all_pits : t -> t
   val nth : t -> Index.t -> Count.t
   val is_empty : t -> bool
   val clear_board : t -> t
@@ -25,7 +22,7 @@ end = struct
   let init player =
     { player;
       tally = Count.of_int 0;
-      pits = Array.init 6 (fun x -> Count.of_int 4) }
+      pits = Array.init 6 (fun _ -> Count.of_int 4) }
 
   let copy halfBoard = { halfBoard with pits = Array.copy halfBoard.pits }
 
@@ -49,12 +46,6 @@ end = struct
   let bump_tally n halfBoard =
     { halfBoard with tally = Count.(halfBoard.tally + n) }
 
-  let update_tally tally halfBoard = { halfBoard with tally }
-
-  let bump_all_pits halfBoard =
-    let pits = Array.map (fun x -> Count.(x + of_int 1)) halfBoard.pits in
-    { halfBoard with pits }
-
   let nth halfBoard indx = (halfBoard.pits).(Index.to_int indx)
 
   let is_empty halfBoard =
@@ -65,7 +56,7 @@ end = struct
       tally =
         (let open Count in
         halfBoard.tally + Array.fold_right ( + ) halfBoard.pits (of_int 0));
-      pits= Array.map (fun x -> Count.of_int 0) halfBoard.pits }
+      pits= Array.map (fun _ -> Count.of_int 0) halfBoard.pits }
 
   let rm_pieces n halfBoard =
     let n = Index.to_int n in
@@ -116,7 +107,7 @@ let remove_pieces n board =
   if Count.to_int count > 0 then Some (count, { board with currSide })
   else None
 
-let rec dist n count board =
+let dist n count board =
   let module H = HalfBoard in
   let module I = Index in
   let module C = Count in
