@@ -149,6 +149,8 @@ let rec random_playout player board =
       let newBoard = Board.move n board in
       random_playout player newBoard
 
+(* TODO: Rewrite the following (to the end of file) so we expand from the root
+ * for every simulation according to the scores *)
 let rec compute_favorability searchLimit player tree =
   let rec random_play sl (f0, b) =
     (* Printf.printf "%i " sl; *)
