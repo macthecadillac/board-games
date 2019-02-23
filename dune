@@ -1,4 +1,4 @@
 (executables
   (names mancala)
-  (modules AbsType Board Common MCTS mancala)
+  (modules Board Common MCTS mancala)
   (libraries containers cmdliner))
