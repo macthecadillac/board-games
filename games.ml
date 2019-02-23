@@ -22,16 +22,15 @@ let two_player_game () =
         print_string "\n\n" ;
         Board.print board ;
         let n = acquire_input () in
-        match Board.is_valid_move n board with
-        | true ->
-            let newBoard = Board.move n board in
-            print_endline "\nAfter your move:\n" ;
-            Board.print newBoard ;
-            print_endline "\n================================\n" ;
-            aux newBoard
-        | false ->
-            print_endline "\nThe bowl is empty!" ;
-            aux board )
+        if Board.is_valid_move n board then
+          let newBoard = Board.move n board in
+          print_endline "\nAfter your move:\n" ;
+          Board.print newBoard ;
+          print_endline "\n================================\n" ;
+          aux newBoard
+        else
+          print_endline "\nThe bowl is empty!" ;
+          aux board )
     | true ->
         Board.print_tally board ;
         match Board.winner_is board with
@@ -44,137 +43,53 @@ let two_player_game () =
   let initBoard = Board.init () in
   aux initBoard
 
-let play_vs_ai searchLimit humanSide histFile =
+let play_vs_ai searchLimit humanSide =
   let open MCTS in
-  let rec aux searchLimit humanSide board histTree =
+  let rec aux searchLimit humanSide board =
     let currSide = Board.curr_player board in
-    match Board.is_finished board with
-    | false -> (
+    if Board.is_finished board then
       match (humanSide, currSide) with
       | One, One | Two, Two -> (
           print_endline "\n================================\n" ;
           Board.print board ;
           let n = acquire_input () in
-          match Board.is_valid_move n board with
-          | true ->
-              let newBoard = Board.move n board in
-              print_endline "\nAfter your move:\n" ;
-              Board.print newBoard ;
-              (* print_endline "\n================================\n"; *)
-              let _, _, nextBranch = HistTree.choose_branch n histTree in
-              aux searchLimit humanSide newBoard nextBranch
-          | false ->
-              print_endline "\nThe bowl is empty!" ;
-              aux searchLimit humanSide board histTree )
+          if Board.is_valid_move n board then
+            let newBoard = Board.move n board in
+            print_endline "\nAfter your move:\n" ;
+            Board.print newBoard ;
+            aux searchLimit humanSide newBoard
+          else
+            print_endline "\nThe bowl is empty!" ;
+            aux searchLimit humanSide board)
       | _ ->
-          let aiMove = most_favored_move searchLimit currSide board histTree in
+          let aiMove = most_favored_move searchLimit currSide board in
           let newBoard = Board.move aiMove board in
           Index.to_int aiMove + 1 |> Printf.printf "\nCOMPUTER MOVE: %i\n\n" ;
           Board.print newBoard ;
-          let _, _, nextBranch = HistTree.choose_branch aiMove histTree in
-          aux searchLimit humanSide newBoard nextBranch )
-    | true ->
-        Board.print_tally board ;
-        match Board.winner_is board with
-        | None -> print_endline "The game is a draw."
-        | Some p ->
-            print_string "The winner is " ;
-            print_player p ;
-            print_endline "."
+          aux searchLimit humanSide newBoard
+    else
+      Board.print_tally board ;
+      match Board.winner_is board with
+      | None -> print_endline "The game is a draw."
+      | Some p ->
+          print_string "The winner is " ;
+          print_player p ;
+          print_endline "."
   in
   let initBoard = Board.init () in
-  let histTree = HistTree.load histFile in
-  aux searchLimit humanSide initBoard histTree
-
-let ai_vs_ai searchLimit histFile =
-  let open MCTS in
-  let rec aux searchLimit board histTree record =
-    let currSide = Board.curr_player board in
-    match Board.is_finished board with
-    | false ->
-        let aiMove = most_favored_move searchLimit currSide board histTree in
-        let newBoard = Board.move aiMove board in
-        print_string "\nComputer " ;
-        Board.curr_player board |> print_player ;
-        Index.to_int aiMove + 1 |> Printf.printf " move: %i\n\n" ;
-        Board.print newBoard ;
-        let _, _, nextBranch = HistTree.choose_branch aiMove histTree in
-        aux searchLimit newBoard nextBranch (aiMove :: record)
-    | true ->
-        Board.print_tally board ;
-        let winner = Board.winner_is board in
-        match winner with
-        | None -> print_endline "The game is a draw."
-        | Some p ->
-            print_string "The winner is " ;
-            print_player p ;
-            print_endline "."
-  in
-  let histTree = HistTree.load histFile in
-  let initBoard = Board.init () in
-  aux searchLimit initBoard histTree []
-
-let train_ai searchLimit histFile =
-  let open MCTS in
-  let rec game i histTree =
-    (* firstMove tells the program whether the current move is the first move of
-     * the player. This is to ensure the program explores all possible first
-     * moves so it doesn't get blindsided when encountering outlandish openings.
-     * *)
-    let rec aux searchLimit board histTree record n =
-      let currSide = Board.curr_player board in
-      match Board.is_finished board with
-      | false ->
-          let aiMove =
-            (* most_favored_move searchLimit currSide board histTree in *)
-          if n = 0 then Index.of_int (i mod 6)
-          else most_favored_move searchLimit currSide board histTree in
-          if n = 0 then Printf.printf "\nMandatory move: %i\n\n" (i mod 6);
-          let newBoard = Board.move aiMove board in
-          let _, _, nextBranch = HistTree.choose_branch aiMove histTree in
-          aux searchLimit newBoard nextBranch (aiMove :: record) (n + 1)
-      | true ->
-          let winner = Board.winner_is board in
-          (winner, record)
-    in
-    let initBoard = Board.init () in
-    let winner, revRecord = aux searchLimit initBoard histTree [] 0 in
-    (* records are reversed because of the way lists are constructed *)
-    let record = List.rev revRecord in
-    let histTree = HistTree.update_from_last_playout winner histTree record in
-    HistTree.save histTree histFile ;
-    List.iter (fun x -> Printf.printf "%i " (Index.to_int x)) record ;
-    print_newline () ;
-    Printf.printf "Made %i moves\n" (List.length record) ;
-    Printf.printf "histTree depth = %i\n" (HistTree.depth histTree) ;
-    Printf.printf "Finished round %i" i ;
-    print_newline () ;
-    print_newline () ;
-    (* print_newline (); *)
-    game (i + 1) histTree
-  in
-  let histTree = HistTree.load histFile in
-  Printf.printf "histTree depth = %i\n" (HistTree.depth histTree) ;
-  print_newline () ;
-  game 0 histTree
+  aux searchLimit humanSide initBoard
 
 (****************************************************************************)
 (***** Parse the commandline and start game with appropriate parameters *****)
 (****************************************************************************)
 
-let launch_game mode aivai training humanSecond nplayouts histFile =
-  match training with
-  | true -> train_ai 20 histFile
-  | false ->
-    match aivai with
-    | true -> ai_vs_ai nplayouts histFile
-    | false ->
-      match mode with
-      | false -> two_player_game ()
-      | true ->
-        match humanSecond with
-        | true -> play_vs_ai nplayouts Two histFile
-        | false -> play_vs_ai nplayouts One histFile
+let launch_game mode humanSecond nplayouts =
+  match mode with
+  | false -> two_player_game ()
+  | true ->
+    match humanSecond with
+    | true -> play_vs_ai nplayouts Two
+    | false -> play_vs_ai nplayouts One
 
 (* in game (Board.init ()) *)
 
@@ -182,21 +97,9 @@ let mode =
   let doc = "Play against the computer." in
   Arg.(value & flag & info ["a"] ~doc)
 
-let aivai =
-  let doc = "Make the computer play itself." in
-  Arg.(value & flag & info ["v"] ~doc)
-
-let training =
-  let doc = "Train the computer player." in
-  Arg.(value & flag & info ["t"] ~doc)
-
 let humanSecond =
   let doc = "Let the computer make the first move." in
   Arg.(value & flag & info ["s"] ~doc)
-
-let histFile =
-  let doc = "Pick a history file for the AI." in
-  Arg.(value & opt string "histtree.cache" & info ["h"] ~doc)
 
 let nplayouts =
   let doc =
@@ -212,6 +115,6 @@ let info =
 
 let game_t =
   let open Term in
-  const launch_game $ mode $ aivai $ training $ humanSecond $ nplayouts $ histFile
+  const launch_game $ mode $ humanSecond $ nplayouts
 
 let () = Term.exit @@ Term.eval (game_t, info)
