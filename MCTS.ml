@@ -84,91 +84,112 @@ end = struct
     { q; total }
 end
 
-let expand_leaf levels board favi =
-  let rec f depth i b = function
-    | [] -> []
-    | n :: tl ->
-        let node' =
-          let p = Board.curr_player b in
-          let b' = Board.move n b in
-          let p' = Board.curr_player b' in
-          let depth' =
-            match (p, p') with
-            | One, One | Two, Two -> depth
-            | _ -> depth - 1 in
-          Tree.Node ((n, p, favi, b), [aux depth' i b'])
-        in node' :: f depth i b tl
-  and aux depth i b =
-    if depth = 0 then Tree.Leaf (i, Board.curr_player b, favi, b)
+module type BOARD = sig
+  type t
+  val curr_player : t -> player
+  val move : Index.t -> t -> t
+  val available_moves : t -> Index.t list
+  val is_finished : t -> bool
+  val winner_is : t -> player option
+end
+
+module type S = sig
+  type t
+  val most_favored_move : int -> player -> t -> Index.t
+end
+
+module Make (M : BOARD) : S
+  with type t = M.t = struct
+  type t = M.t
+
+  let expand_leaf levels board favi =
+    let rec f depth i b = function
+      | [] -> []
+      | n :: tl ->
+          let node' =
+            let p = M.curr_player b in
+            let b' = M.move n b in
+            let p' = M.curr_player b' in
+            let depth' =
+              match (p, p') with
+              | One, One | Two, Two -> depth
+              | _ -> depth - 1 in
+            Tree.Node ((n, p, favi, b), [aux depth' i b'])
+          in node' :: f depth i b tl
+    and aux depth i b =
+      if depth = 0 then Tree.Leaf (i, M.curr_player b, favi, b)
+      else
+        let p = M.curr_player board in
+        match M.available_moves b with
+        | [] -> Tree.Leaf (i, p, favi, b)
+        | moves -> Tree.Node ((i, p, favi, b), f depth i b moves) in
+    aux levels (Index.init ()) board
+
+  let random_move availableMoves =
+    let state = Random.pick_list availableMoves in
+    Random.run state
+
+  let rec random_playout player board =
+    if M.is_finished board then
+      match M.winner_is board with
+      | None -> Favorability.Draw
+      | Some p ->
+        match (p, player) with
+        | One, One | Two, Two -> Favorability.Positive
+        | _ -> Favorability.Negative
     else
-      let p = Board.curr_player board in
-      match Board.available_moves b with
-      | [] -> Tree.Leaf (i, p, favi, b)
-      | moves -> Tree.Node ((i, p, favi, b), f depth i b moves) in
-  aux levels (Index.init ()) board
+      let availableMoves = M.available_moves board in
+      let n = random_move availableMoves in
+      let newBoard = M.move n board in
+      random_playout player newBoard
 
-let random_move availableMoves =
-  let state = Random.pick_list availableMoves in
-  Random.run state
+  (* TODO: Rewrite the following (to the end of file) so we expand from the root
+   * for every simulation according to the scores *)
+  let rec compute_score n player tree
 
-let rec random_playout player board =
-  if Board.is_finished board then
-    match Board.winner_is board with
-    | None -> Favorability.Draw
-    | Some p ->
-      match (p, player) with
-      | One, One | Two, Two -> Favorability.Positive
-      | _ -> Favorability.Negative
-  else
-    let availableMoves = Board.available_moves board in
-    let n = random_move availableMoves in
-    let newBoard = Board.move n board in
-    random_playout player newBoard
+  let rec compute_favorability n player tree =
+    let rec random_play sl (f0, b) =
+      if sl = 0 then (f0, b)
+      else
+        let f =
+          match random_playout player b with
+          | Favorability.Positive -> Favorability.promote f0
+          | Favorability.Negative -> Favorability.demote f0
+          | Favorability.Draw -> Favorability.mote f0 in
+        random_play (sl - 1) (f, b) in
+    Tree.map (random_play n) tree
 
-(* TODO: Rewrite the following (to the end of file) so we expand from the root
- * for every simulation according to the scores *)
-let rec compute_favorability n player tree =
-  let rec random_play sl (f0, b) =
-    if sl = 0 then (f0, b)
-    else
-      let f =
-        match random_playout player b with
-        | Favorability.Positive -> Favorability.promote f0
-        | Favorability.Negative -> Favorability.demote f0
-        | Favorability.Draw -> Favorability.mote f0 in
-      random_play (sl - 1) (f, b) in
-  Tree.map (random_play n) tree
+  (* let compute_score fav = Favorability.as_float fav *)
 
-let compute_score fav = Favorability.as_float fav
-
-let most_favored_move searchLimit player board =
-  let module F = Favorability in
-  let module T = Tree in
-  let pick_max a b =
-    let _, fA = a and _, fB = b in
-    (* if the favorabilities substantially differ *)
-    if fA -. fB >=. 0.01 then a
-    (* pick one at random if both favorabilities as within 0.01 of one another
-     * so the AI is more willing to try out different moves *)
-    else if abs_float (fA -. fB) <. 0.01 then
-      let r = Random.pick_list [a; b] in
-      Random.run r
-    else b in
-  (* extract contents of a leaf with the assumption that it only receives
-   * a leaf as its argument *)
-  let unpack_leaves = function
-    | T.Node (i, _, l) -> (i, 0.) (* Inaccessible branch in this context *)
-    | T.Leaf (i, _, a) -> (i, compute_score a) in
-  (* expand 2 levels down the game tree *)
-  let tree =
-    expand_leaf 2 player board (Favorability.init ())
-    |> compute_favorability searchLimit player
-    |> T.map (fun (f, _) -> f) in
-  (* filters out only the favorabilities *)
-  let moves =
-    match tree with
-    | T.Leaf _ as l -> [l]
-    | T.Node (_, _, l) -> List.map (T.collapse F.( + ) (F.init ())) l in
-  let scores = List.map unpack_leaves moves in
-  let indx, _ = List.fold_left pick_max (List.hd scores) scores in
-  indx
+  let most_favored_move searchLimit (player : player) board =
+    let module F = Favorability in
+    let module T = Tree in
+    let pick_max a b =
+      let _, fA = a and _, fB = b in
+      (* if the favorabilities substantially differ *)
+      if fA -. fB >=. 0.01 then a
+      (* pick one at random if both favorabilities as within 0.01 of one another
+       * so the AI is more willing to try out different moves *)
+      else if abs_float (fA -. fB) <. 0.01 then
+        let r = Random.pick_list [a; b] in
+        Random.run r
+      else b in
+    (* extract contents of a leaf with the assumption that it only receives
+     * a leaf as its argument *)
+    let unpack_leaves = function
+      | T.Node (i, _, l) -> (i, 0.) (* Inaccessible branch in this context *)
+      | T.Leaf (i, _, a) -> (i, compute_score a) in
+    (* expand 2 levels down the game tree *)
+    let tree =
+      expand_leaf 2 player board (Favorability.init ())
+      |> compute_favorability searchLimit player
+      |> T.map (fun (f, _) -> f) in
+    (* filters out only the favorabilities *)
+    let moves =
+      match tree with
+      | T.Leaf _ as l -> [l]
+      | T.Node (_, _, l) -> List.map (T.collapse F.( + ) (F.init ())) l in
+    let scores = List.map unpack_leaves moves in
+    let indx, _ = List.fold_left pick_max (List.hd scores) scores in
+    indx
+end
