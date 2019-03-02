@@ -1,6 +1,6 @@
 open Common
 
-module type BOARD = sig
+module type GAME = sig
   type t
   val available_moves : t -> Index.t list
   val curr_player : t -> player
@@ -14,5 +14,5 @@ module type S = sig
   val most_favored_move : int -> t -> Index.t
 end
 
-module Make (M : BOARD) : S
+module Make (M : GAME) : S
   with type t = M.t
