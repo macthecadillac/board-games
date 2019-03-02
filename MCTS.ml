@@ -83,7 +83,7 @@ end
 
 module Make (M : BOARD) : S
   with type t = M.t = struct
-  include M
+  type t = M.t
 
   module F = Favorability
 
