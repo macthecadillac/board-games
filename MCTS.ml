@@ -79,48 +79,35 @@ module type BOARD = sig
   val print : t -> unit
 end
 
-module type S = functor (M : BOARD) -> sig
+module type S = sig
   type t
-  val init : unit -> t
-  val curr_player : t -> player
-  val is_finished : t -> bool
-  val is_valid_move : Index.t -> t -> bool
   val most_favored_move : int -> t -> Index.t
-  val move : Index.t -> t -> t
-  val winner_is : t -> player option
-  val print : t -> unit
 end
 
-module Make : S =
-  functor (M: BOARD) -> struct
+module Make (M : BOARD) : S
+  with type t = M.t = struct
   include M
 
   module F = Favorability
 
-  let expand_leaf levels board favi =
-    let rec f depth i b = function
+  let next_level board favi =
+    let rec f i b = function
       | [] -> []
       | n :: tl ->
           let node' =
             let p = M.curr_player b in
             let b' = M.move n b in
             let p' = M.curr_player b' in
-            let depth' =
-              match (p, p') with
-              | One, One | Two, Two -> depth
-              | _ -> depth - 1 in
-            Tree.Node ((n, p, favi, b), [aux depth' i b'])
-          in node' :: f depth i b tl
-    and aux depth i b =
-      if depth = 0 then Tree.Leaf (i, M.curr_player b, favi, b)
-      else
-        let p = M.curr_player board in
-        match M.available_moves b with
-        | [] -> Tree.Leaf (i, p, favi, b)
-        | moves -> Tree.Node ((i, p, favi, b), f depth i b moves) in
-    aux levels (Index.init ()) board
-
-  let next_level = expand_leaf 1
+            match (p, p') with
+            | One, One | Two, Two -> Tree.Node ((n, p, favi, b), [aux i b'])
+            | _ -> Tree.Leaf (n, p, favi, b)
+          in node' :: f i b tl
+    and aux i b =
+      let p = M.curr_player board in
+      match M.available_moves b with
+      | [] -> Tree.Leaf (i, p, favi, b)
+      | moves -> Tree.Node ((i, p, favi, b), f i b moves) in
+    aux (Index.init ()) board
 
   let pick_max f l =
     let rec aux acc = function

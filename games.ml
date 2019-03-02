@@ -1,7 +1,7 @@
 open Common
 open Cmdliner
 
-module MancalaGame = MCTS.Make (Mancala)
+module MancalaAI = MCTS.Make (Mancala)
 
 let rec acquire_input () =
   print_string "\nEnter your move (1-6): " ;
@@ -17,67 +17,67 @@ let rec acquire_input () =
 
 let two_player_game () =
   let rec aux board =
-    match MancalaGame.is_finished board with
+    match Mancala.is_finished board with
     | false -> (
         Printf.printf "Current player: " ;
-        print_player (MancalaGame.curr_player board) ;
+        print_player (Mancala.curr_player board) ;
         print_string "\n\n" ;
-        MancalaGame.print board ;
+        Mancala.print board ;
         let n = acquire_input () in
-        if MancalaGame.is_valid_move n board then
-          let newMancalaGame = MancalaGame.move n board in
+        if Mancala.is_valid_move n board then
+          let newMancalaGame = Mancala.move n board in
           print_endline "\nAfter your move:\n" ;
-          MancalaGame.print newMancalaGame ;
+          Mancala.print newMancalaGame ;
           print_endline "\n================================\n" ;
           aux newMancalaGame
         else
           print_endline "\nThe bowl is empty!" ;
           aux board )
     | true ->
-        MancalaGame.print board ;
-        match MancalaGame.winner_is board with
+        Mancala.print board ;
+        match Mancala.winner_is board with
         | None -> print_endline "The game is a draw."
         | Some p ->
             print_string "The winner is " ;
             print_player p ;
             print_endline "."
   in
-  let initMancalaGame = MancalaGame.init () in
+  let initMancalaGame = Mancala.init () in
   aux initMancalaGame
 
 let play_vs_ai searchLimit humanSide =
   let rec aux searchLimit humanSide board =
-    let currSide = MancalaGame.curr_player board in
-    if MancalaGame.is_finished board then
+    let currSide = Mancala.curr_player board in
+    if Mancala.is_finished board then
       match (humanSide, currSide) with
       | One, One | Two, Two -> (
           print_endline "\n================================\n" ;
-          MancalaGame.print board ;
+          Mancala.print board ;
           let n = acquire_input () in
-          if MancalaGame.is_valid_move n board then
-            let newMancalaGame = MancalaGame.move n board in
+          if Mancala.is_valid_move n board then
+            let newMancalaGame = Mancala.move n board in
             print_endline "\nAfter your move:\n" ;
-            MancalaGame.print newMancalaGame ;
+            Mancala.print newMancalaGame ;
             aux searchLimit humanSide newMancalaGame
           else
             print_endline "\nThe bowl is empty!" ;
             aux searchLimit humanSide board)
       | _ ->
-          let aiMove = MancalaGame.most_favored_move searchLimit board in
-          let newMancalaGame = MancalaGame.move aiMove board in
+          let aiMove = MancalaAI.most_favored_move searchLimit board in
+          let newMancalaGame = Mancala.move aiMove board in
           Index.to_int aiMove + 1 |> Printf.printf "\nCOMPUTER MOVE: %i\n\n" ;
-          MancalaGame.print newMancalaGame ;
+          Mancala.print newMancalaGame ;
           aux searchLimit humanSide newMancalaGame
     else
-      MancalaGame.print board ;
-      match MancalaGame.winner_is board with
+      Mancala.print board ;
+      match Mancala.winner_is board with
       | None -> print_endline "The game is a draw."
       | Some p ->
           print_string "The winner is " ;
           print_player p ;
           print_endline "."
   in
-  let initMancalaGame = MancalaGame.init () in
+  let initMancalaGame = Mancala.init () in
   aux searchLimit humanSide initMancalaGame
 
 (****************************************************************************)
@@ -92,7 +92,7 @@ let launch_game mode humanSecond nplayouts =
     | true -> play_vs_ai nplayouts Two
     | false -> play_vs_ai nplayouts One
 
-(* in game (MancalaGame.init ()) *)
+(* in game (Mancala.init ()) *)
 
 let mode =
   let doc = "Play against the computer." in
