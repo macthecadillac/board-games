@@ -1,4 +1,4 @@
 (executables
   (names games)
-  (modules Board Common MCTS games)
+  (modules Common MCTS games Mancala)
   (libraries containers cmdliner))

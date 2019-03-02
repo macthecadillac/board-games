@@ -1,6 +1,8 @@
 open Common
 open Cmdliner
 
+module MancalaGame = MCTS.Make (Mancala)
+
 let rec acquire_input () =
   print_string "\nEnter your move (1-6): " ;
   let humanMove =
@@ -15,69 +17,68 @@ let rec acquire_input () =
 
 let two_player_game () =
   let rec aux board =
-    match Board.is_finished board with
+    match MancalaGame.is_finished board with
     | false -> (
         Printf.printf "Current player: " ;
-        print_player (Board.curr_player board) ;
+        print_player (MancalaGame.curr_player board) ;
         print_string "\n\n" ;
-        Board.print board ;
+        MancalaGame.print board ;
         let n = acquire_input () in
-        if Board.is_valid_move n board then
-          let newBoard = Board.move n board in
+        if MancalaGame.is_valid_move n board then
+          let newMancalaGame = MancalaGame.move n board in
           print_endline "\nAfter your move:\n" ;
-          Board.print newBoard ;
+          MancalaGame.print newMancalaGame ;
           print_endline "\n================================\n" ;
-          aux newBoard
+          aux newMancalaGame
         else
           print_endline "\nThe bowl is empty!" ;
           aux board )
     | true ->
-        Board.print_tally board ;
-        match Board.winner_is board with
+        MancalaGame.print board ;
+        match MancalaGame.winner_is board with
         | None -> print_endline "The game is a draw."
         | Some p ->
             print_string "The winner is " ;
             print_player p ;
             print_endline "."
   in
-  let initBoard = Board.init () in
-  aux initBoard
+  let initMancalaGame = MancalaGame.init () in
+  aux initMancalaGame
 
 let play_vs_ai searchLimit humanSide =
-  let open MCTS in
   let rec aux searchLimit humanSide board =
-    let currSide = Board.curr_player board in
-    if Board.is_finished board then
+    let currSide = MancalaGame.curr_player board in
+    if MancalaGame.is_finished board then
       match (humanSide, currSide) with
       | One, One | Two, Two -> (
           print_endline "\n================================\n" ;
-          Board.print board ;
+          MancalaGame.print board ;
           let n = acquire_input () in
-          if Board.is_valid_move n board then
-            let newBoard = Board.move n board in
+          if MancalaGame.is_valid_move n board then
+            let newMancalaGame = MancalaGame.move n board in
             print_endline "\nAfter your move:\n" ;
-            Board.print newBoard ;
-            aux searchLimit humanSide newBoard
+            MancalaGame.print newMancalaGame ;
+            aux searchLimit humanSide newMancalaGame
           else
             print_endline "\nThe bowl is empty!" ;
             aux searchLimit humanSide board)
       | _ ->
-          let aiMove = most_favored_move searchLimit currSide board in
-          let newBoard = Board.move aiMove board in
+          let aiMove = MancalaGame.most_favored_move searchLimit board in
+          let newMancalaGame = MancalaGame.move aiMove board in
           Index.to_int aiMove + 1 |> Printf.printf "\nCOMPUTER MOVE: %i\n\n" ;
-          Board.print newBoard ;
-          aux searchLimit humanSide newBoard
+          MancalaGame.print newMancalaGame ;
+          aux searchLimit humanSide newMancalaGame
     else
-      Board.print_tally board ;
-      match Board.winner_is board with
+      MancalaGame.print board ;
+      match MancalaGame.winner_is board with
       | None -> print_endline "The game is a draw."
       | Some p ->
           print_string "The winner is " ;
           print_player p ;
           print_endline "."
   in
-  let initBoard = Board.init () in
-  aux searchLimit humanSide initBoard
+  let initMancalaGame = MancalaGame.init () in
+  aux searchLimit humanSide initMancalaGame
 
 (****************************************************************************)
 (***** Parse the commandline and start game with appropriate parameters *****)
@@ -91,7 +92,7 @@ let launch_game mode humanSecond nplayouts =
     | true -> play_vs_ai nplayouts Two
     | false -> play_vs_ai nplayouts One
 
-(* in game (Board.init ()) *)
+(* in game (MancalaGame.init ()) *)
 
 let mode =
   let doc = "Play against the computer." in

@@ -5,70 +5,51 @@ module Tree : sig
   type 'a t =
     | Leaf of 'a
     | Node of 'a * 'a t list
-  val map : ('a -> 'b) -> 'a t -> 'b t
-  val collapse : ('a -> 'b -> 'a) -> 'a -> 'b t -> 'a
+  val node_elt : 'a t -> 'a
 end = struct
   type 'a t =
     | Leaf of 'a
     | Node of 'a * 'a t list
 
-  let rec map f = function
-    | Leaf a -> Leaf (f a)
-    | Node (a, l) -> Node (f a, List.map (map f) l)
-
-  let rec collapse f acc = function
-    | Leaf a -> f acc a
-    | Node (a, l) -> List.fold_left (collapse f) (f acc a) l
+  let node_elt = function
+    | Leaf a -> a
+    | Node (a, _) -> a
 end
 
 module Favorability : sig
   type t = { win : int; total : int }
-  type outcome = Positive | Negative | Draw
+  type outcome = Win | Loss | Draw
   val init : unit -> t
-  val build : int -> int -> t
-  val is_unity : t -> bool
+  val t_of_outcome : outcome -> t
   val as_float : t -> float
-  val promote : t -> t
-  val demote : t -> t
-  val mote : t -> t
   val ( + ) : t -> t -> t
-  val ( > ) : t -> t -> bool
-  val ( = ) : t -> t -> bool
-  val print : t -> unit
+  (* val print : t -> unit *)
 end = struct
   type t = { win : int; total : int }
-  type outcome = Positive | Negative | Draw
+  type outcome = Win | Loss | Draw
 
   let init () = { win = 0; total = 0 }
 
-  let build a b = { win = a; total = b }
-
-  let is_unity a = a.win = a.total
+  let t_of_outcome = function
+    | Win -> { win = 2; total = 2}
+    | Draw -> { win = 1; total = 2}
+    | Loss -> { win = 0; total = 2}
 
   let as_float s =
     if s.total = 0 then 0.
     else Float.of_int s.win /. Float.of_int s.total
 
-  let promote s = { win = s.win + 2; total = s.total + 2 }
-
-  let demote s = { s with total = s.total + 2 }
-
-  let mote s = { win = s.win + 1; total = s.total + 2 }
-
   let ( + ) a b = { win = a.win + b.win; total = a.total + b.total }
 
-  let ( > ) a b = as_float a -. as_float b >. 1e-10
-
-  let ( = ) a b = Float.abs (as_float a -. as_float b) <. 1e-10
-
-  let print a = Printf.printf "{ win = %i; total = %i }" a.win a.total
+  (* let print a = Printf.printf "{ win = %i; total = %i }" a.win a.total *)
 end
 
 module Score : sig
   type t
   val from_fav : Favorability.t -> t
-  val as_float : t -> float
-  val accum : t -> t -> t
+  (* val as_float : t -> float *)
+  (* val accum : t -> t -> t *)
+  val ( > ) : t -> t -> bool
 end = struct
   type t = { q : float; total : int }
 
@@ -76,31 +57,45 @@ end = struct
 
   let as_float s = s.q +. (1. /. (float_of_int s.total))
 
-  let accum s1 s2 =
-    let t1 = float_of_int s1.total
-    and t2 = float_of_int s2.total in
-    let q = (s1.q /. t1 +. s2.q /. t2) /. (1. /. t1 +. 1. /. t2)
-    and total = s1.total + s2.total in
-    { q; total }
+  (* let accum s1 s2 = *)
+  (*   let t1 = float_of_int s1.total *)
+  (*   and t2 = float_of_int s2.total in *)
+  (*   let q = (s1.q /. t1 +. s2.q /. t2) /. (1. /. t1 +. 1. /. t2) *)
+  (*   and total = s1.total + s2.total in *)
+  (*   { q; total } *)
+
+  let ( > ) a b = as_float a >. as_float b
 end
 
 module type BOARD = sig
   type t
-  val curr_player : t -> player
-  val move : Index.t -> t -> t
+  val init : unit -> t
   val available_moves : t -> Index.t list
+  val curr_player : t -> player
   val is_finished : t -> bool
+  val is_valid_move : Index.t -> t -> bool
+  val move : Index.t -> t -> t
   val winner_is : t -> player option
+  val print : t -> unit
 end
 
-module type S = sig
+module type S = functor (M : BOARD) -> sig
   type t
-  val most_favored_move : int -> player -> t -> Index.t
+  val init : unit -> t
+  val curr_player : t -> player
+  val is_finished : t -> bool
+  val is_valid_move : Index.t -> t -> bool
+  val most_favored_move : int -> t -> Index.t
+  val move : Index.t -> t -> t
+  val winner_is : t -> player option
+  val print : t -> unit
 end
 
-module Make (M : BOARD) : S
-  with type t = M.t = struct
-  type t = M.t
+module Make : S =
+  functor (M: BOARD) -> struct
+  include M
+
+  module F = Favorability
 
   let expand_leaf levels board favi =
     let rec f depth i b = function
@@ -125,71 +120,73 @@ module Make (M : BOARD) : S
         | moves -> Tree.Node ((i, p, favi, b), f depth i b moves) in
     aux levels (Index.init ()) board
 
-  let random_move availableMoves =
-    let state = Random.pick_list availableMoves in
-    Random.run state
+  let next_level = expand_leaf 1
 
-  let rec random_playout player board =
-    if M.is_finished board then
-      match M.winner_is board with
-      | None -> Favorability.Draw
-      | Some p ->
-        match (p, player) with
-        | One, One | Two, Two -> Favorability.Positive
-        | _ -> Favorability.Negative
-    else
-      let availableMoves = M.available_moves board in
-      let n = random_move availableMoves in
-      let newBoard = M.move n board in
-      random_playout player newBoard
+  let pick_max f l =
+    let rec aux acc = function
+      | [] -> []
+      | hd :: tl ->
+          match acc with
+          | [] -> aux [hd] tl
+          | fst :: _ ->
+              if f hd fst then aux [hd] tl
+              else aux acc tl in
+    let r = Random.pick_list (aux [] l) in
+    Random.run r
 
-  (* TODO: Rewrite the following (to the end of file) so we expand from the root
-   * for every simulation according to the scores *)
-  let rec compute_score n player tree
+  let rec replace_branch f b b' = function
+    | [] -> []
+    | hd :: tl ->
+        if f hd b then b' :: tl
+        else hd :: (replace_branch f b b' tl)
 
-  let rec compute_favorability n player tree =
-    let rec random_play sl (f0, b) =
-      if sl = 0 then (f0, b)
+  let _branch_ord a b =
+    let _, _, x, _ = Tree.node_elt a
+    and _, _, y, _ = Tree.node_elt b in
+    let x' = Score.from_fav x
+    and y' = Score.from_fav y in
+    Score.(x' > y')
+
+  let _branch_eq a b =
+    let i, _, _, _ = Tree.node_elt a
+    and j, _, _, _ = Tree.node_elt b in
+    Index.(i = j)
+
+  let rec playout player l = match l with
+    | Tree.Node ((i, p, f, b), branches) ->
+        let branch = pick_max _branch_ord branches in
+        let fav, branch' = playout player branch in
+        let f' = F.(fav + f) in
+        let branches' = replace_branch _branch_eq branch branch' branches in
+        fav, Tree.Node ((i, p, f', b), branches')
+    | Tree.Leaf (i, p, _, board) ->
+        if M.is_finished board then
+          let f = (
+            match M.winner_is board with
+            | None -> F.Draw
+            | Some p ->
+              match (p, player) with
+              | One, One | Two, Two -> F.Win
+              | _ -> F.Loss)
+            |> F.t_of_outcome in
+          f, Tree.Leaf (i, p, f, board)
+        else
+          next_level board (F.init ())
+            |> playout player
+
+  let most_favored_move nPlayouts board =
+    let rec aux n acc player (fav, tree) =
+      if n = 0 then acc, tree
       else
-        let f =
-          match random_playout player b with
-          | Favorability.Positive -> Favorability.promote f0
-          | Favorability.Negative -> Favorability.demote f0
-          | Favorability.Draw -> Favorability.mote f0 in
-        random_play (sl - 1) (f, b) in
-    Tree.map (random_play n) tree
-
-  (* let compute_score fav = Favorability.as_float fav *)
-
-  let most_favored_move searchLimit (player : player) board =
-    let module F = Favorability in
-    let module T = Tree in
-    let pick_max a b =
-      let _, fA = a and _, fB = b in
-      (* if the favorabilities substantially differ *)
-      if fA -. fB >=. 0.01 then a
-      (* pick one at random if both favorabilities as within 0.01 of one another
-       * so the AI is more willing to try out different moves *)
-      else if abs_float (fA -. fB) <. 0.01 then
-        let r = Random.pick_list [a; b] in
-        Random.run r
-      else b in
-    (* extract contents of a leaf with the assumption that it only receives
-     * a leaf as its argument *)
-    let unpack_leaves = function
-      | T.Node (i, _, l) -> (i, 0.) (* Inaccessible branch in this context *)
-      | T.Leaf (i, _, a) -> (i, compute_score a) in
-    (* expand 2 levels down the game tree *)
-    let tree =
-      expand_leaf 2 player board (Favorability.init ())
-      |> compute_favorability searchLimit player
-      |> T.map (fun (f, _) -> f) in
-    (* filters out only the favorabilities *)
-    let moves =
-      match tree with
-      | T.Leaf _ as l -> [l]
-      | T.Node (_, _, l) -> List.map (T.collapse F.( + ) (F.init ())) l in
-    let scores = List.map unpack_leaves moves in
-    let indx, _ = List.fold_left pick_max (List.hd scores) scores in
-    indx
+        let acc' = F.(acc + fav) in
+        aux (n - 1) acc' player (playout player tree) in
+    let player = M.curr_player board in
+    let fav = F.init () in
+    let root = Tree.Leaf (Index.init (), player, fav, board) in
+    let _, root' = aux nPlayouts (F.init ()) player (F.init (), root) in
+    match root' with
+    | Leaf _ -> Index.init () (* inaccessible branch *)
+    | Node (_, branches) ->
+        let i, _, _, _ = pick_max _branch_ord branches in
+        i
 end
