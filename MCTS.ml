@@ -45,6 +45,7 @@ module Score : sig
   type t
   val from_fav : Favorability.t -> t
   val ( > ) : t -> t -> bool
+  val ( $> ) : t -> t -> bool
 end = struct
   type t = { q : float; total : int }
 
@@ -52,7 +53,9 @@ end = struct
 
   let as_float s = s.q +. (1. /. (float_of_int s.total))
 
-  let ( > ) a b = as_float a >. as_float b
+  let ( > ) a b = a.total > b.total
+
+  let ( $> ) a b = as_float a >. as_float b
 end
 
 module type S = sig
@@ -62,39 +65,43 @@ end
 
 module Make (M : GAME) : S
   with type t = M.t = struct
-  type t = M.t
 
   module F = Favorability
 
-  let next_level board favi =
-    let rec f i b = function
-      | [] -> []
-      | n :: tl ->
-          let node' =
-            let p = M.curr_player b in
-            let b' = M.move n b in
-            let p' = M.curr_player b' in
-            match (p, p') with
-            | One, One | Two, Two -> Tree.Node ((n, p, favi, b), [aux i b'])
-            | _ -> Tree.Leaf (n, p, favi, b)
-          in node' :: f i b tl
-    and aux i b =
-      let p = M.curr_player board in
-      match M.available_moves b with
-      | [] -> Tree.Leaf (i, p, favi, b)
-      | moves -> Tree.Node ((i, p, favi, b), f i b moves) in
-    aux (Index.init ()) board
+  type t = M.t
+  type elt = Index.t * player * F.t * M.t
 
-  let pick_max f l =
+  exception ExpansionError
+
+  (* Scoring functions for "pick". See below. *)
+  let _ord f a b =
+    let _, _, x, _ = Tree.node_elt a
+    and _, _, y, _ = Tree.node_elt b in
+    let x' = Score.from_fav x
+    and y' = Score.from_fav y in
+    f x' y'
+  
+  let _branch_ord = _ord Score.( $> )
+  let _comp = _ord Score.( > )
+
+  let _branch_eq a b =
+    let i, _, _, _ = Tree.node_elt a
+    and j, _, _, _ = Tree.node_elt b in
+    Index.(i = j)
+
+  (* Pick the branch that shows the most promise. If multiple branches have the
+   * highest score then one will be picked from among them at random *)
+  let pick f l =
     let rec aux acc = function
-      | [] -> []
+      | [] -> acc
       | hd :: tl ->
           match acc with
           | [] -> aux [hd] tl
           | fst :: _ ->
               if f hd fst then aux [hd] tl
               else aux acc tl in
-    let r = Random.pick_list (aux [] l) in
+    let l' = aux [] l in
+    let r = Random.pick_list l' in
     Random.run r
 
   let rec replace_branch f b b' = function
@@ -103,26 +110,41 @@ module Make (M : GAME) : S
         if f hd b then b' :: tl
         else hd :: (replace_branch f b b' tl)
 
-  let _branch_ord a b =
-    let _, _, x, _ = Tree.node_elt a
-    and _, _, y, _ = Tree.node_elt b in
-    let x' = Score.from_fav x
-    and y' = Score.from_fav y in
-    Score.(x' > y')
+  let rec expand_one_level tree =
+    let rec list_branches b = function
+      | [] -> []
+      | n :: tl ->
+          let node' =
+            let p = M.curr_player b in
+            let b' = M.move n b in
+            let p' = M.curr_player b' in
+            match (p, p') with
+            | One, Two | Two, One -> Tree.Leaf (n, p, F.init (), b')
+            | One, One | Two, Two ->
+                match expand_one_level (Tree.Leaf (n, p, F.init (), b')) with
+                | None -> raise ExpansionError
+                | Some ((Tree.Leaf _) as leaf) -> leaf
+                | Some (Tree.Node ((_, p, favi, b), l)) ->
+                    Tree.Node ((n, p, favi, b), l)
+          in node' :: list_branches b tl
+    and aux t =
+      let i, p, f, b =
+        match t with
+        | Tree.Leaf (i, p, f, b) -> i, p, f, b
+        | Tree.Node _ -> raise ExpansionError in
+      match M.available_moves b with
+      | [] -> None
+      | moves -> Some (Tree.Node ((i, p, f, b), list_branches b moves)) in
+    aux tree
 
-  let _branch_eq a b =
-    let i, _, _, _ = Tree.node_elt a
-    and j, _, _, _ = Tree.node_elt b in
-    Index.(i = j)
-
-  let rec playout player l = match l with
+  let rec playout player = function
     | Tree.Node ((i, p, f, b), branches) ->
-        let branch = pick_max _branch_ord branches in
+        let branch = pick _branch_ord branches in
         let fav, branch' = playout player branch in
         let f' = F.(fav + f) in
         let branches' = replace_branch _branch_eq branch branch' branches in
         fav, Tree.Node ((i, p, f', b), branches')
-    | Tree.Leaf (i, p, _, board) ->
+    | Tree.Leaf (i, p, _, board) as leaf ->
         if M.is_finished board then
           let f = (
             match M.winner_is board with
@@ -134,10 +156,11 @@ module Make (M : GAME) : S
             |> F.t_of_outcome in
           f, Tree.Leaf (i, p, f, board)
         else
-          next_level board (F.init ())
-            |> playout player
+          match expand_one_level leaf with
+          | None -> raise ExpansionError
+          | Some t -> playout player t
 
-  let most_favored_move nPlayouts board =
+  let most_favored_move nplayouts board =
     let rec aux n acc player (fav, tree) =
       if n = 0 then acc, tree
       else
@@ -146,10 +169,10 @@ module Make (M : GAME) : S
     let player = M.curr_player board in
     let fav = F.init () in
     let root = Tree.Leaf (Index.init (), player, fav, board) in
-    let _, root' = aux nPlayouts (F.init ()) player (F.init (), root) in
+    let _, root' = aux nplayouts (F.init ()) player (F.init (), root) in
     match root' with
     | Leaf _ -> Index.init () (* inaccessible branch *)
     | Node (_, branches) ->
-        let i, _, _, _ = pick_max _branch_ord branches in
+        let i, _, _, _ = Tree.node_elt (pick _comp branches) in
         i
 end
