@@ -30,7 +30,7 @@ let two_player_game () =
           print_string "The winner is ";
           print_player p;
           print_endline ".";
-          exit 0
+          exit 0  (* Don't really know why this is necessary but meh *)
     else
       Printf.printf "Current player: ";
       let s =
@@ -63,20 +63,27 @@ let play_vs_ai nplayouts humanSide debug =
           print_string "The winner is ";
           print_player p;
           print_endline ".";
-          exit 0
+          exit 0  (* Don't really know why this is necessary but meh *)
     else
+      let _ =
+        match clear with
+        | KeepBuffer -> ()
+        | ClearBuffer ->
+            let _ = Sys.command "clear" in
+            print_newline ();
+            Mancala.print board in
       match (humanSide, currSide) with
       | One, One | Two, Two -> (
           let n = acquire_input () in
-          let _ =
-            match clear with
-            | ClearBuffer -> Sys.command "clear"
-            | KeepBuffer -> 0 in
           if Mancala.is_valid_move n board then
             let board' = Mancala.move n board in
             print_newline ();
             Mancala.print board';
-            aux ClearBuffer nplayouts humanSide board'
+            let clear' =
+              match Mancala.curr_player board', currSide with
+              | One, One | Two, Two -> KeepBuffer
+              | _ -> ClearBuffer in
+            aux clear' nplayouts humanSide board'
           else
             print_endline "\nThe bowl is empty!";
             aux KeepBuffer nplayouts humanSide board)
