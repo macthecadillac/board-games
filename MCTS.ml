@@ -84,7 +84,6 @@ module Make (M : GAME) : S
   with type t = M.t = struct
 
   type t = M.t
-  type elt = Index.t * player * Score.t * M.t
 
   exception ExpansionError
 
@@ -101,8 +100,8 @@ module Make (M : GAME) : S
   let _eq = comp Score.( = )
 
   let _print_node n =
-    let a, b, c, d = Tree.node_elt n in
-    Score.print c
+    let _, _, x, _ = Tree.node_elt n in
+    Score.print x
 
   (* Pick according to the criterion given (as function f). When undecided,
    * randomly pick one from among the equals *)
@@ -197,7 +196,7 @@ module Make (M : GAME) : S
           | Release -> ();
           | Debug ->
               let l = List.map Tree.node_elt branches in
-              List.iter (fun (i, _, f, b) ->
+              List.iter (fun (i, _, f, _) ->
                 print_newline ();
                 Printf.printf "(%i, " (Index.to_int i);
                 Score.print f;
