@@ -25,7 +25,7 @@ let two_player_game () =
   let rec aux board =
     if Mancala.is_finished board then
       match Mancala.winner_is board with
-      | None -> print_endline "The game is a draw."
+      | None -> print_endline "The game is a draw."; exit 0
       | Some p ->
           print_string "The winner is ";
           print_player p;
@@ -57,7 +57,7 @@ let play_vs_ai nplayouts humanSide debug =
     let currSide = Mancala.curr_player board in
     if Mancala.is_finished board then
       match Mancala.winner_is board with
-      | None -> print_endline "The game is a draw."
+      | None -> print_endline "The game is a draw."; exit 0
       | Some p ->
           Mancala.print_tally board;
           print_string "The winner is ";
