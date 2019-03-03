@@ -17,7 +17,7 @@ module HalfBoard : sig
   val rm_pieces : Index.t -> t -> Count.t * t
   val pits_repr : t -> String.t
 end = struct
-  type t = {player: player; tally: Count.t; pits: Count.t array}
+  type t = { player: player; tally: Count.t; pits: Count.t array }
 
   let init player =
     { player;

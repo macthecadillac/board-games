@@ -15,70 +15,71 @@ let rec acquire_input () =
     acquire_input () )
   else humanMove
 
+(* TODO: Parameterize two_player_game and play_vs_ai over different board games
+ * using a functor *)
 let two_player_game () =
   let rec aux board =
-    match Mancala.is_finished board with
-    | false -> (
-        Printf.printf "Current player: " ;
-        print_player (Mancala.curr_player board) ;
-        print_string "\n\n" ;
-        Mancala.print board ;
-        let n = acquire_input () in
-        if Mancala.is_valid_move n board then
-          let newMancalaGame = Mancala.move n board in
-          print_endline "\nAfter your move:\n" ;
-          Mancala.print newMancalaGame ;
-          print_endline "\n================================\n" ;
-          aux newMancalaGame
-        else
-          print_endline "\nThe bowl is empty!" ;
-          aux board )
-    | true ->
-        Mancala.print board ;
-        match Mancala.winner_is board with
-        | None -> print_endline "The game is a draw."
-        | Some p ->
-            print_string "The winner is " ;
-            print_player p ;
-            print_endline "."
-  in
-  let initMancalaGame = Mancala.init () in
-  aux initMancalaGame
-
-let play_vs_ai searchLimit humanSide =
-  let rec aux searchLimit humanSide board =
-    let currSide = Mancala.curr_player board in
-    if Mancala.is_finished board then
-      match (humanSide, currSide) with
-      | One, One | Two, Two -> (
-          print_endline "\n================================\n" ;
-          Mancala.print board ;
-          let n = acquire_input () in
-          if Mancala.is_valid_move n board then
-            let newMancalaGame = Mancala.move n board in
-            print_endline "\nAfter your move:\n" ;
-            Mancala.print newMancalaGame ;
-            aux searchLimit humanSide newMancalaGame
-          else
-            print_endline "\nThe bowl is empty!" ;
-            aux searchLimit humanSide board)
-      | _ ->
-          let aiMove = MancalaAI.most_favored_move searchLimit board in
-          let newMancalaGame = Mancala.move aiMove board in
-          Index.to_int aiMove + 1 |> Printf.printf "\nCOMPUTER MOVE: %i\n\n" ;
-          Mancala.print newMancalaGame ;
-          aux searchLimit humanSide newMancalaGame
-    else
+    if Mancala.is_finished board then (
       Mancala.print board ;
       match Mancala.winner_is board with
       | None -> print_endline "The game is a draw."
       | Some p ->
           print_string "The winner is " ;
           print_player p ;
-          print_endline "."
+          print_endline ".")
+    else
+      Printf.printf "Current player: " ;
+      print_player (Mancala.curr_player board) ;
+      print_string "\n\n" ;
+      Mancala.print board ;
+      let n = acquire_input () in
+      if Mancala.is_valid_move n board then
+        let board' = Mancala.move n board in
+        print_endline "\nAfter your move:\n" ;
+        Mancala.print board' ;
+        print_endline "\n================================\n" ;
+        aux board'
+      else
+        print_endline "\nThe bowl is empty!" ;
+        aux board
   in
   let initMancalaGame = Mancala.init () in
-  aux searchLimit humanSide initMancalaGame
+  aux initMancalaGame
+
+let play_vs_ai nplayouts humanSide =
+  let rec aux nplayouts humanSide board =
+    let currSide = Mancala.curr_player board in
+    if Mancala.is_finished board then (
+      Mancala.print board ;
+      match Mancala.winner_is board with
+      | None -> print_endline "The game is a draw."
+      | Some p ->
+          print_string "The winner is " ;
+          print_player p ;
+          print_endline ".")
+    else
+      match (humanSide, currSide) with
+      | One, One | Two, Two -> (
+          print_endline "\n================================\n" ;
+          Mancala.print board ;
+          let n = acquire_input () in
+          if Mancala.is_valid_move n board then
+            let board' = Mancala.move n board in
+            print_endline "\nAfter your move:\n" ;
+            Mancala.print board' ;
+            aux nplayouts humanSide board'
+          else
+            print_endline "\nThe bowl is empty!" ;
+            aux nplayouts humanSide board)
+      | _ ->
+          let aiMove = MancalaAI.most_favored_move nplayouts board in
+          let board' = Mancala.move aiMove board in
+          Index.to_int aiMove + 1 |> Printf.printf "\nCOMPUTER MOVE: %i\n\n" ;
+          Mancala.print board' ;
+          aux nplayouts humanSide board'
+  in
+  let initMancalaGame = Mancala.init () in
+  aux nplayouts humanSide initMancalaGame
 
 (****************************************************************************)
 (***** Parse the commandline and start game with appropriate parameters *****)
@@ -92,8 +93,6 @@ let launch_game mode humanSecond nplayouts =
     | true -> play_vs_ai nplayouts Two
     | false -> play_vs_ai nplayouts One
 
-(* in game (Mancala.init ()) *)
-
 let mode =
   let doc = "Play against the computer." in
   Arg.(value & flag & info ["a"] ~doc)
@@ -104,11 +103,11 @@ let humanSecond =
 
 let nplayouts =
   let doc =
-    "The number of playouts to be performed per branch with "
+    "The number of playouts to be performed with "
     ^ "the Monte Carlo AI. The higher the number, the stronger "
-    ^ "the game play."
+    ^ "the game play. The default is 1600."
   in
-  Arg.(value & opt int 30 & info ["n"] ~docv:"NPLAYOUTS" ~doc)
+  Arg.(value & opt int 1600 & info ["n"] ~docv:"NPLAYOUTS" ~doc)
 
 let info =
   let doc = "A simple implementation of the mancala game" in
