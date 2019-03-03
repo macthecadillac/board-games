@@ -28,7 +28,6 @@ module Score : sig
   val ( $< ) : t -> t -> bool
   val ( = ) : t -> t -> bool
   val ( $= ) : t -> t -> bool
-  val print : t -> unit
 end = struct
   type t = { q : float;
              u : float;
@@ -59,7 +58,7 @@ end = struct
 
   let ( > ) a b = a.total > b.total
 
-  let score_own a = a.q *. a.u +. a.u ** 4.
+  let score_own a = a.q *. sqrt a.u +. a.u ** 4.
   let score_opponent a = (1. -. a.q) *. a.u +. a.u ** 4.
 
   let ( $< ) a b =
@@ -69,10 +68,6 @@ end = struct
   let ( $> ) a b =
     if a $= b then false
     else score_own a >. score_own b
-
-  let print a = Printf.printf
-                "(q: %f, u: %f, win: %i, loss: %i, total: %i) score = %f"
-                a.q a.u a.win a.loss a.total (score_own a)
 end
 
 module type S = sig
@@ -100,10 +95,6 @@ module Make (M : GAME) : S
   let _ord = comp Score.( > )
   let _eq = comp Score.( = )
 
-  let _print_node n =
-    let a, b, c, d = Tree.node_elt n in
-    Score.print c
-
   (* Pick according to the criterion given (as function f). When undecided,
    * randomly pick one from among the equals *)
   let pick greater eq l =
@@ -125,7 +116,6 @@ module Make (M : GAME) : S
         if f hd b then b' :: tl
         else hd :: (replace_branch f b b' tl)
 
-  (* TODO: flatten multiple moves so "playout" can see them *)
   let rec expand_one_level tree =
     let rec list_branches brd = function
       | [] -> []
@@ -193,14 +183,6 @@ module Make (M : GAME) : S
     match root' with
     | Leaf _ -> Index.init () (* inaccessible branch *)
     | Node (_, branches) ->
-        let l = List.map Tree.node_elt branches in
-        List.iter (fun (i, _, f, b) ->
-          print_newline ();
-          Printf.printf "(%i, " (Index.to_int i);
-          Score.print f;
-          print_string ") ";
-          ) l;
-        print_newline ();
         let i, _, _, _ = Tree.node_elt (pick _ord _eq branches) in
         i
 end
