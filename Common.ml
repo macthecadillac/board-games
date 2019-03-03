@@ -53,6 +53,8 @@ let print_player = function
   | One -> Printf.printf "%s" "player 1"
   | Two -> Printf.printf "%s" "player 2"
 
+type debug = Debug | Release
+
 module type GAME = sig
   type t
   val available_moves : t -> Index.t list

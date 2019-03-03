@@ -5,6 +5,8 @@ module MancalaAI = MCTS.Make (Mancala)
 
 type cls = ClearBuffer | KeepBuffer
 
+(* TODO: move into the mancala specific module/functor once that is done since
+ * this is not a general function *)
 let rec acquire_input () =
   print_string "\nEnter your move (1-6): ";
   let humanMove =
@@ -14,7 +16,7 @@ let rec acquire_input () =
   in
   if Index.to_int humanMove > 5 || Index.to_int humanMove < 0 then (
     print_endline "Invalid input.";
-    acquire_input () )
+    acquire_input ())
   else humanMove
 
 (* TODO: Parameterize two_player_game and play_vs_ai over different board games
@@ -49,7 +51,7 @@ let two_player_game () =
   let initGame = Mancala.init () in
   aux initGame
 
-let play_vs_ai nplayouts humanSide =
+let play_vs_ai nplayouts humanSide debug =
   let rec aux clear nplayouts humanSide board =
     let currSide = Mancala.curr_player board in
     if Mancala.is_finished board then
@@ -77,7 +79,7 @@ let play_vs_ai nplayouts humanSide =
             print_endline "\nThe bowl is empty!";
             aux KeepBuffer nplayouts humanSide board)
       | _ ->
-          let aiMove = MancalaAI.most_favored_move nplayouts board in
+          let aiMove = MancalaAI.most_favored_move nplayouts board debug in
           let board' = Mancala.move aiMove board in
           Index.to_int aiMove + 1 |> Printf.printf "\nCOMPUTER MOVE: %i\n\n";
           Mancala.print board';
@@ -88,18 +90,15 @@ let play_vs_ai nplayouts humanSide =
   Mancala.print initGame;
   aux KeepBuffer nplayouts humanSide initGame
 
-(****************************************************************************)
-(***** Parse the commandline and start game with appropriate parameters *****)
-(****************************************************************************)
-
-let launch_game mode humanSecond nplayouts =
+let launch_game mode humanSecond nplayouts dbg =
   let _ = Sys.command "clear" in
+  let debug = if dbg then Debug else Release in
   match mode with
   | false -> two_player_game ()
   | true ->
     match humanSecond with
-    | true -> play_vs_ai nplayouts Two
-    | false -> play_vs_ai nplayouts One
+    | true -> play_vs_ai nplayouts Two debug
+    | false -> play_vs_ai nplayouts One debug
 
 let mode =
   let doc = "Play against the computer." in
@@ -121,8 +120,12 @@ let info =
   let doc = "A simple implementation of the mancala game" in
   Term.info "mancala" ~doc ~exits:Term.default_exits
 
+let debug =
+  let doc = "Turn on debug mode" in
+  Arg.(value & flag & info ["d"] ~doc)
+
 let game_t =
   let open Term in
-  const launch_game $ mode $ humanSecond $ nplayouts
+  const launch_game $ mode $ humanSecond $ nplayouts $ debug
 
 let () = Term.exit @@ Term.eval (game_t, info)

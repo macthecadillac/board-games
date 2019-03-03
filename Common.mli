@@ -26,6 +26,8 @@ type player = One | Two
 val switch_player : player -> player
 val print_player : player -> unit
 
+type debug = Debug | Release
+
 module Index : CustomInt.S
 
 module Count : CustomInt.S
