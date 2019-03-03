@@ -3,15 +3,17 @@ open Cmdliner
 
 module MancalaAI = MCTS.Make (Mancala)
 
+type cls = ClearBuffer | KeepBuffer
+
 let rec acquire_input () =
-  print_string "\nEnter your move (1-6): " ;
+  print_string "\nEnter your move (1-6): ";
   let humanMove =
     try read_int () - 1 |> Index.of_int with Failure _ ->
-      print_endline "Invalid input." ;
+      print_endline "Invalid input.";
       acquire_input ()
   in
   if Index.to_int humanMove > 5 || Index.to_int humanMove < 0 then (
-    print_endline "Invalid input." ;
+    print_endline "Invalid input.";
     acquire_input () )
   else humanMove
 
@@ -19,73 +21,79 @@ let rec acquire_input () =
  * using a functor *)
 let two_player_game () =
   let rec aux board =
-    if Mancala.is_finished board then (
-      (* Mancala.print board ; *)
+    if Mancala.is_finished board then
       match Mancala.winner_is board with
       | None -> print_endline "The game is a draw."
       | Some p ->
-          print_string "The winner is " ;
-          print_player p ;
-          print_endline ".")
-    else (
-      Printf.printf "Current player: " ;
-      print_player (Mancala.curr_player board) ;
-      print_string "\n\n" ;
-      Mancala.print board ;
+          print_string "The winner is ";
+          print_player p;
+          print_endline "."
+    else
+      Printf.printf "Current player: ";
+      let s =
+        match (Mancala.curr_player board) with
+        | One -> "ONE"
+        | Two -> "TWO" in
+      print_string s;
+      print_string "\n\n";
+      Mancala.print board;
       let n = acquire_input () in
+      let _ = Sys.command "clear" in
       if Mancala.is_valid_move n board then
         let board' = Mancala.move n board in
-        print_endline "\nAfter your move:\n" ;
-        Mancala.print board' ;
-        print_endline "\n================================\n" ;
         aux board'
       else
-        print_endline "\nThe bowl is empty!" ;
-        aux board)
+        print_endline "\nThe bowl is empty!";
+        aux board
   in
   let initGame = Mancala.init () in
   aux initGame
 
 let play_vs_ai nplayouts humanSide =
-  let rec aux nplayouts humanSide board =
+  let rec aux clear nplayouts humanSide board =
     let currSide = Mancala.curr_player board in
     if Mancala.is_finished board then
       match Mancala.winner_is board with
       | None -> print_endline "The game is a draw."
       | Some p ->
           Mancala.print_tally board;
-          print_string "The winner is " ;
-          print_player p ;
+          print_string "The winner is ";
+          print_player p;
           print_endline ".";
     else
       match (humanSide, currSide) with
       | One, One | Two, Two -> (
-          print_endline "\n================================\n" ;
-          Mancala.print board ;
           let n = acquire_input () in
+          let _ =
+            match clear with
+            | ClearBuffer -> Sys.command "clear"
+            | KeepBuffer -> 0 in
           if Mancala.is_valid_move n board then
             let board' = Mancala.move n board in
-            print_endline "\nAfter your move:\n" ;
-            Mancala.print board' ;
-            aux nplayouts humanSide board'
+            print_newline ();
+            Mancala.print board';
+            aux ClearBuffer nplayouts humanSide board'
           else
-            print_endline "\nThe bowl is empty!" ;
-            aux nplayouts humanSide board)
+            print_endline "\nThe bowl is empty!";
+            aux KeepBuffer nplayouts humanSide board)
       | _ ->
           let aiMove = MancalaAI.most_favored_move nplayouts board in
           let board' = Mancala.move aiMove board in
-          Index.to_int aiMove + 1 |> Printf.printf "\nCOMPUTER MOVE: %i\n\n" ;
-          Mancala.print board' ;
-          aux nplayouts humanSide board'
+          Index.to_int aiMove + 1 |> Printf.printf "\nCOMPUTER MOVE: %i\n\n";
+          Mancala.print board';
+          aux KeepBuffer nplayouts humanSide board'
   in
   let initGame = Mancala.init () in
-  aux nplayouts humanSide initGame
+  print_newline ();
+  Mancala.print initGame;
+  aux KeepBuffer nplayouts humanSide initGame
 
 (****************************************************************************)
 (***** Parse the commandline and start game with appropriate parameters *****)
 (****************************************************************************)
 
 let launch_game mode humanSecond nplayouts =
+  let _ = Sys.command "clear" in
   match mode with
   | false -> two_player_game ()
   | true ->
