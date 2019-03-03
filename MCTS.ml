@@ -25,6 +25,7 @@ module Score : sig
   val ( + ) : t -> t -> t
   val ( > ) : t -> t -> bool
   val ( $> ) : t -> t -> bool
+  val ( $< ) : t -> t -> bool
   val ( = ) : t -> t -> bool
   val ( $= ) : t -> t -> bool
   val print : t -> unit
@@ -33,23 +34,24 @@ end = struct
              u : float;
              win : int;
              loss : int;
+             draw : int;
              total : int; }
 
-  let init () = { q = 1.; u = 1.; win = 0; loss = 0; total = 0 }
+  let init () = { q = 1.; u = 1.; win = 0; loss = 0; draw = 0; total = 0 }
 
   let of_outcome = function
-    | Win -> { q = 1.0; u = 0.; win = 1; loss = 0; total = 1 }
-    | Loss -> { q = 0.; u = 0.; win = 0; loss = 1; total = 1 }
-    | Draw -> { q = 0.5; u = 0.; win = 0; loss = 0; total = 1 }
+    | Win -> { q = 1.0; u = 0.; win = 1; loss = 0; draw = 0; total = 1 }
+    | Loss -> { q = 0.; u = 0.; win = 0; loss = 1; draw = 0; total = 1 }
+    | Draw -> { q = 0.5; u = 0.; win = 0; loss = 0; draw = 1; total = 1 }
 
   let ( + ) a b =
     let u = 1. /. float_of_int (a.total + b.total)
     and win = a.win + b.win
     and total = a.total + b.total
-    and loss = a.loss + b.loss in
-    let draw = total - win - loss in
+    and loss = a.loss + b.loss
+    and draw = a.draw + b.draw in
     let q = 0.5 *. float_of_int (2 * win + draw) /. float_of_int total in
-    { q; u; win; loss; total }
+    { q; u; win; loss; draw; total }
 
   let ( = ) a b = a.total = b.total
 
@@ -57,11 +59,20 @@ end = struct
 
   let ( > ) a b = a.total > b.total
 
-  let ( $> ) a b = if a $= b then false else a.q +. a.u >. b.q +. b.u
+  let score_own a = a.q *. a.u +. a.u ** 4.
+  let score_opponent a = (1. -. a.q) *. a.u +. a.u ** 4.
+
+  let ( $< ) a b =
+    if a $= b then false
+    else score_opponent a >. score_opponent b
+
+  let ( $> ) a b =
+    if a $= b then false
+    else score_own a >. score_own b
 
   let print a = Printf.printf
-                "(q: %f, u: %f, win: %i, loss: %i, total: %i)"
-                a.q a.u a.win a.loss a.total
+                "(q: %f, u: %f, win: %i, loss: %i, total: %i) score = %f"
+                a.q a.u a.win a.loss a.total (score_own a)
 end
 
 module type S = sig
@@ -84,6 +95,7 @@ module Make (M : GAME) : S
     f x y
   
   let _branch_gt = comp Score.( $> )
+  let _branch_lt = comp Score.( $< )
   let _branch_eq = comp Score.( $= )
   let _ord = comp Score.( > )
   let _eq = comp Score.( = )
@@ -101,15 +113,9 @@ module Make (M : GAME) : S
           match acc with
           | [] -> aux [hd] tl
           | fst :: _ as eqs ->
-              if greater hd fst then (
-                aux [hd] tl
-                )
-              else if eq hd fst then (
-                aux (hd :: eqs) tl
-              )
-              else (
-                aux acc tl
-              ) in
+              if greater hd fst then aux [hd] tl
+              else if eq hd fst then aux (hd :: eqs) tl
+              else aux acc tl in
     let r = Random.pick_list (aux [] l) in
     Random.run r
 
@@ -119,6 +125,7 @@ module Make (M : GAME) : S
         if f hd b then b' :: tl
         else hd :: (replace_branch f b b' tl)
 
+  (* TODO: flatten multiple moves so "playout" can see them *)
   let rec expand_one_level tree =
     let rec list_branches brd = function
       | [] -> []
@@ -148,7 +155,10 @@ module Make (M : GAME) : S
 
   let rec playout player = function
     | Tree.Node ((i, p, f, b), branches) ->
-        let branch = pick _branch_gt _branch_eq branches in
+        let branch =
+          match (p, player) with
+          | One, One | Two, Two -> pick _branch_gt _branch_eq branches
+          | _ -> pick _branch_lt _branch_eq branches in
         let fav, branch' = playout player branch in
         let f' = Score.(fav + f) in
         let same_branch = fun a b ->
