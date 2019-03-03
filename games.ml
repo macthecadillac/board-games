@@ -121,9 +121,9 @@ let nplayouts =
   let doc =
     "The number of playouts to be performed with "
     ^ "the Monte Carlo AI. The higher the number, the stronger "
-    ^ "the game play. The default is 1600."
+    ^ "the game play. The default is 3000."
   in
-  Arg.(value & opt int 1600 & info ["n"] ~docv:"NPLAYOUTS" ~doc)
+  Arg.(value & opt int 3000 & info ["n"] ~docv:"NPLAYOUTS" ~doc)
 
 let info =
   let doc = "A simple implementation of several board games" in
