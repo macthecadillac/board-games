@@ -60,7 +60,7 @@ end = struct
   let ( > ) a b = a.total > b.total
 
   let score_own a = a.q *. sqrt a.u +. a.u ** 4.
-  let score_opponent a = (1. -. a.q) *. a.u +. a.u ** 4.
+  let score_opponent a = (1. -. a.q) *. sqrt a.u +. a.u ** 4.
 
   let ( $< ) a b =
     if a $= b then false
