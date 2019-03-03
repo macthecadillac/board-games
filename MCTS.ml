@@ -59,8 +59,8 @@ end = struct
 
   let ( > ) a b = a.total > b.total
 
-  let score_own a = a.q *. sqrt a.u +. a.u ** 4.
-  let score_opponent a = (1. -. a.q) *. sqrt a.u +. a.u ** 4.
+  let score_own a = a.q *. sqrt a.u +. a.u ** 2.
+  let score_opponent a = (1. -. a.q) *. sqrt a.u +. a.u ** 2.
 
   let ( $< ) a b =
     if a $= b then false
@@ -71,7 +71,7 @@ end = struct
     else score_own a >. score_own b
 
   let print a = Printf.printf
-                "(q: %f, u: %f, win: %i, draw: %i, loss: %i, total: %i) score = %f"
+                "(q: %f, u: %f, win: %i, draw: %i, loss: %i, total: %i)\tscore = %f"
                 a.q a.u a.win a.draw a.loss a.total (score_own a)
 end
 
@@ -198,9 +198,9 @@ module Make (M : GAME) : S
               let l = List.map Tree.node_elt branches in
               List.iter (fun (i, _, f, _) ->
                 print_newline ();
-                Printf.printf "(%i, " (Index.to_int i);
+                Printf.printf "%i  " (Index.to_int i + 1);
                 Score.print f;
-                print_string ") ";
+                print_string " ";
                 ) l in
         print_newline ();
         let i, _, _, _ = Tree.node_elt (pick _ord _eq branches) in
