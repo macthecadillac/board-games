@@ -1,4 +1,6 @@
-(executables
-  (names games)
-  (modules Common MCTS games Mancala)
-  (libraries containers cmdliner))
+(executable
+  (name board_games)
+  (public_name board-games)
+  (modules Common ConnectFour MCTS board_games Mancala)
+  (libraries containers cmdliner)
+  (package board-games))
