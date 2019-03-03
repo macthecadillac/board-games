@@ -29,7 +29,8 @@ let two_player_game () =
       | Some p ->
           print_string "The winner is ";
           print_player p;
-          print_endline "."
+          print_endline ".";
+          exit 0
     else
       Printf.printf "Current player: ";
       let s =
@@ -62,6 +63,7 @@ let play_vs_ai nplayouts humanSide debug =
           print_string "The winner is ";
           print_player p;
           print_endline ".";
+          exit 0
     else
       match (humanSide, currSide) with
       | One, One | Two, Two -> (
