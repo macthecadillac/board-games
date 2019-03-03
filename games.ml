@@ -126,8 +126,8 @@ let nplayouts =
   Arg.(value & opt int 1600 & info ["n"] ~docv:"NPLAYOUTS" ~doc)
 
 let info =
-  let doc = "A simple implementation of the mancala game" in
-  Term.info "mancala" ~doc ~exits:Term.default_exits
+  let doc = "A simple implementation of several board games" in
+  Term.info "games" ~doc ~exits:Term.default_exits
 
 let debug =
   let doc = "Turn on debug mode" in
