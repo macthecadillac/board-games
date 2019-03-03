@@ -20,14 +20,14 @@ let rec acquire_input () =
 let two_player_game () =
   let rec aux board =
     if Mancala.is_finished board then (
-      Mancala.print board ;
+      (* Mancala.print board ; *)
       match Mancala.winner_is board with
       | None -> print_endline "The game is a draw."
       | Some p ->
           print_string "The winner is " ;
           print_player p ;
           print_endline ".")
-    else
+    else (
       Printf.printf "Current player: " ;
       print_player (Mancala.curr_player board) ;
       print_string "\n\n" ;
@@ -41,22 +41,22 @@ let two_player_game () =
         aux board'
       else
         print_endline "\nThe bowl is empty!" ;
-        aux board
+        aux board)
   in
-  let initMancalaGame = Mancala.init () in
-  aux initMancalaGame
+  let initGame = Mancala.init () in
+  aux initGame
 
 let play_vs_ai nplayouts humanSide =
   let rec aux nplayouts humanSide board =
     let currSide = Mancala.curr_player board in
-    if Mancala.is_finished board then (
-      Mancala.print board ;
+    if Mancala.is_finished board then
       match Mancala.winner_is board with
       | None -> print_endline "The game is a draw."
       | Some p ->
+          Mancala.print_tally board;
           print_string "The winner is " ;
           print_player p ;
-          print_endline ".")
+          print_endline ".";
     else
       match (humanSide, currSide) with
       | One, One | Two, Two -> (
@@ -78,8 +78,8 @@ let play_vs_ai nplayouts humanSide =
           Mancala.print board' ;
           aux nplayouts humanSide board'
   in
-  let initMancalaGame = Mancala.init () in
-  aux nplayouts humanSide initMancalaGame
+  let initGame = Mancala.init () in
+  aux nplayouts humanSide initGame
 
 (****************************************************************************)
 (***** Parse the commandline and start game with appropriate parameters *****)

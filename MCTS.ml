@@ -111,31 +111,31 @@ module Make (M : GAME) : S
         else hd :: (replace_branch f b b' tl)
 
   let rec expand_one_level tree =
-    let rec list_branches b = function
+    let rec list_branches brd = function
       | [] -> []
       | n :: tl ->
           let node' =
-            let p = M.curr_player b in
-            let b' = M.move n b in
-            let p' = M.curr_player b' in
+            let p = M.curr_player brd in
+            let brd' = M.move n brd in
+            let p' = M.curr_player brd' in
+            let leaf = Tree.Leaf (n, p', F.init (), brd') in
             match (p, p') with
-            | One, Two | Two, One -> Tree.Leaf (n, p, F.init (), b')
+            | One, Two | Two, One -> leaf
             | One, One | Two, Two ->
-                match expand_one_level (Tree.Leaf (n, p, F.init (), b')) with
-                | None -> raise ExpansionError
-                | Some ((Tree.Leaf _) as leaf) -> leaf
-                | Some (Tree.Node ((_, p, favi, b), l)) ->
-                    Tree.Node ((n, p, favi, b), l)
-          in node' :: list_branches b tl
-    and aux t =
-      let i, p, f, b =
-        match t with
-        | Tree.Leaf (i, p, f, b) -> i, p, f, b
-        | Tree.Node _ -> raise ExpansionError in
-      match M.available_moves b with
-      | [] -> None
-      | moves -> Some (Tree.Node ((i, p, f, b), list_branches b moves)) in
-    aux tree
+                if M.is_finished brd' then leaf
+                else
+                  match expand_one_level leaf with
+                  | Tree.Leaf _ -> raise ExpansionError
+                  | Tree.Node ((_, p', favi, brd'), l) ->
+                      Tree.Node ((n, p', favi, brd'), l)
+          in node' :: list_branches brd tl in
+    let i, p, f, b =
+      match tree with
+      | Tree.Leaf (indx, plyr, fav, brd) -> indx, plyr, fav, brd
+      | Tree.Node _ -> raise ExpansionError in
+    match M.available_moves b with
+    | [] -> raise ExpansionError
+    | moves -> Tree.Node ((i, p, f, b), list_branches b moves)
 
   let rec playout player = function
     | Tree.Node ((i, p, f, b), branches) ->
@@ -155,10 +155,7 @@ module Make (M : GAME) : S
               | _ -> F.Loss)
             |> F.t_of_outcome in
           f, Tree.Leaf (i, p, f, board)
-        else
-          match expand_one_level leaf with
-          | None -> raise ExpansionError
-          | Some t -> playout player t
+        else playout player (expand_one_level leaf)
 
   let most_favored_move nplayouts board =
     let rec aux n acc player (fav, tree) =
