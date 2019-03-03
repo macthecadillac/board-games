@@ -52,3 +52,12 @@ let switch_player = function One -> Two | Two -> One
 let print_player = function
   | One -> Printf.printf "%s" "player 1"
   | Two -> Printf.printf "%s" "player 2"
+
+module type GAME = sig
+  type t
+  val available_moves : t -> Index.t list
+  val curr_player : t -> player
+  val is_finished : t -> bool
+  val move : Index.t -> t -> t
+  val winner_is : t -> player option
+end

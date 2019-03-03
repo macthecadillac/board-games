@@ -29,3 +29,12 @@ val print_player : player -> unit
 module Index : CustomInt.S
 
 module Count : CustomInt.S
+
+module type GAME = sig
+  type t
+  val available_moves : t -> Index.t list
+  val curr_player : t -> player
+  val is_finished : t -> bool
+  val move : Index.t -> t -> t
+  val winner_is : t -> player option
+end

@@ -23,7 +23,6 @@ module Favorability : sig
   val t_of_outcome : outcome -> t
   val as_float : t -> float
   val ( + ) : t -> t -> t
-  (* val print : t -> unit *)
 end = struct
   type t = { win : int; total : int }
   type outcome = Win | Loss | Draw
@@ -40,15 +39,11 @@ end = struct
     else Float.of_int s.win /. Float.of_int s.total
 
   let ( + ) a b = { win = a.win + b.win; total = a.total + b.total }
-
-  (* let print a = Printf.printf "{ win = %i; total = %i }" a.win a.total *)
 end
 
 module Score : sig
   type t
   val from_fav : Favorability.t -> t
-  (* val as_float : t -> float *)
-  (* val accum : t -> t -> t *)
   val ( > ) : t -> t -> bool
 end = struct
   type t = { q : float; total : int }
@@ -57,23 +52,7 @@ end = struct
 
   let as_float s = s.q +. (1. /. (float_of_int s.total))
 
-  (* let accum s1 s2 = *)
-  (*   let t1 = float_of_int s1.total *)
-  (*   and t2 = float_of_int s2.total in *)
-  (*   let q = (s1.q /. t1 +. s2.q /. t2) /. (1. /. t1 +. 1. /. t2) *)
-  (*   and total = s1.total + s2.total in *)
-  (*   { q; total } *)
-
   let ( > ) a b = as_float a >. as_float b
-end
-
-module type GAME = sig
-  type t
-  val available_moves : t -> Index.t list
-  val curr_player : t -> player
-  val is_finished : t -> bool
-  val move : Index.t -> t -> t
-  val winner_is : t -> player option
 end
 
 module type S = sig
