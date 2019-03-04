@@ -64,12 +64,13 @@ let is_valid_move n board = List.mem ~eq:Index.( = ) n (available_moves board)
 
 let move indx board =
   let currPlayer = switch_player board.currPlayer in
-  let currSide = List.init 6 (fun x -> Index.to_int indx + 7 * x)
-  |> List.fold_while
-     (fun side i ->
-       if i lor side = side then side, `Continue
-       else side + i, `Stop)
-     board.currSide in
+  let currSide =
+    List.init 6 (fun x -> pow2.(Index.to_int indx + 7 * x))
+    |> List.fold_while
+       (fun side i ->
+         if i lor side = side then side, `Continue
+         else side + i, `Stop)
+       board.currSide in
   { board with currPlayer; currSide }
 
 let winner_is a =
