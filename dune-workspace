@@ -1,3 +1,4 @@
 (lang dune 1.0)
 (profile release)
-(context (opam (switch 4.06.1+flambda)))
+(context (opam (switch 4.06.1+flambda)
+               (merlin)))
