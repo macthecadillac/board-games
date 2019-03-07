@@ -87,13 +87,19 @@ module C = struct
     else None
 
   let print board =
-    let int_to_padded_str = Int.to_string_binary %> String.pad ~c:'0' 42 in
-    let playerOne, playerTwo =
+    print_endline " 1 2 3 4 5 6 7 ";
+    let int_to_padded_str =
+      (fun b ->
+        match Int.to_string_binary b |> String.split ~by:"b" with
+        | _ :: s :: _ -> s
+        | _ -> " " (* inaccessible *))
+      %> String.pad ~c:'0' 42 in
+    let sideOne, sideTwo =
       match board.currPlayer with
       | One -> board.currSide, board.otherSide
       | Two -> board.otherSide, board.currSide in
-    let playerOneRepr = int_to_padded_str playerOne
-    and playerTwoRepr = int_to_padded_str playerTwo in
+    let playerOneRepr = int_to_padded_str sideOne
+    and playerTwoRepr = int_to_padded_str sideTwo in
     let rawRepr = String.map2
                   (fun a b ->
                     if Char.equal a '1' then 'o'
@@ -121,9 +127,13 @@ module C = struct
          print_newline ());
     print_endline " 1 2 3 4 5 6 7 ";)
 
-  let game_end_screen board =
-    let _ = Sys.command "clear" in
+  let game_end_screen board debug =
+    let _ = match debug with
+    | Release -> Sys.command "clear"
+    | Debug -> 0 in
+    print_newline ();
     print board;
+    print_newline ();
 end
 
 module Game = Interactive.Make(C)
