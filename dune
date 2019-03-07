@@ -2,5 +2,5 @@
   (names ConnectFour Mancala)
   (public_names connect4 mancala)
   (modules Common ConnectFour Interactive MCTS Mancala)
-  (libraries containers cmdliner)
+  (libraries ANSITerminal containers cmdliner)
   (package board-games))
