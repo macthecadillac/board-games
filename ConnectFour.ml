@@ -42,9 +42,10 @@ module C = struct
   let init () = { currPlayer = One; currSide = 0; otherSide = 0 }
 
   let available_moves a =
+    let fullBoard = a.currSide + a.otherSide in
     List.foldi
     (fun l i elt ->
-      if a.currSide lor elt <> a.currSide then Index.of_int i :: l
+      if fullBoard lor elt <> fullBoard then Index.of_int i :: l
       else l)
     [] topRow
 
@@ -69,10 +70,11 @@ module C = struct
     let currPlayer = switch_player board.currPlayer
     and currSide = board.otherSide
     and otherSide =
+      let fullBoard = board.currSide + board.otherSide in
       List.init 6 (fun x -> pow2.(Index.to_int indx + 7 * x))
       |> List.fold_while
          (fun side i ->
-           if i lor side = side then side, `Continue
+           if i lor fullBoard = fullBoard then side, `Continue
            else side + i, `Stop)
          board.currSide in
     { currPlayer; currSide; otherSide }
@@ -84,24 +86,33 @@ module C = struct
 
   let print board =
     let int_to_padded_str = Int.to_string_binary %> String.pad ~c:'0' 42 in
-    let currPlayerBString = int_to_padded_str board.currSide
-    and otherPlayerBString = int_to_padded_str board.otherSide in
+    let playerOne, playerTwo =
+      match board.currPlayer with
+      | One -> board.currSide, board.otherSide
+      | Two -> board.otherSide, board.currSide in
+    let playerOneRepr = int_to_padded_str playerOne
+    and playerTwoRepr = int_to_padded_str playerTwo in
     let rawRepr = String.map2
                   (fun a b ->
                     if Char.equal a '1' then 'o'
                     else if Char.equal b '1' then 'x'
                     else ' ')
-                  currPlayerBString otherPlayerBString in
+                  playerOneRepr playerTwoRepr in
     let rec _split_str s =
       let s1, s2 = String.take_drop 7 s in
-      if String.equal s2 "" then []
+      if String.equal s2 "" then s1 :: []
       else s1 :: _split_str s2 in
-    String.rev rawRepr
+    let pad s = ('|' :: s) @ ['|'] in
+    (String.rev rawRepr
     |> _split_str
     |> List.rev
-    |> List.iter print_endline
+    |> List.map (String.to_list %> List.intersperse '|' %> pad %> String.of_list)
+    |> List.iter print_endline;
+    print_endline " 1 2 3 4 5 6 7 ";)
 
-  let game_end_screen board = ()
+  let game_end_screen board =
+    let _ = Sys.command "clear" in
+    print board;
 end
 
 module Game = Interactive.Make(C)

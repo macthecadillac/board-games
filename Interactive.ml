@@ -8,17 +8,18 @@ end
 module Make (G : GAME) = struct
   module AI = MCTS.Make(G)
 
-  let rec acquire_input () =
-    print_string "\nEnter your move (1-6): ";
+  let rec acquire_input board =
+    print_string "\nEnter your move: ";
     let humanMove =
-      try read_int () - 1 |> Index.of_int with Failure _ ->
-        print_endline "Invalid input.";
-        acquire_input ()
-    in
-    if Index.to_int humanMove > 5 || Index.to_int humanMove < 0 then (
-      print_endline "Invalid input.";
-      acquire_input ())
-    else humanMove
+      match read_int_opt () with
+      | Some i -> Index.of_int (i - 1)
+      | None -> 
+          print_endline "Invalid input.";
+          acquire_input board in
+    if List.mem humanMove (G.available_moves board) then humanMove
+    else (
+      print_endline "Not a valid move.";
+      acquire_input board)
 
   let two_player_game () =
     let rec aux board =
@@ -26,6 +27,7 @@ module Make (G : GAME) = struct
         match G.winner_is board with
         | None -> print_endline "The game is a draw."; exit 0
         | Some p ->
+            G.game_end_screen board;
             print_string "The winner is ";
             print_player p;
             print_endline ".";
@@ -39,7 +41,7 @@ module Make (G : GAME) = struct
         print_string s;
         print_string "\n\n";
         G.print board;
-        let n = acquire_input () in
+        let n = acquire_input board in
         let _ = Sys.command "clear" in
         if G.is_valid_move n board then
           let board' = G.move n board in
@@ -65,15 +67,16 @@ module Make (G : GAME) = struct
             exit 0  (* Don't really know why this is necessary but meh *)
       else
         let _ =
-          match clear with
-          | `KeepBuffer -> ()
-          | `ClearBuffer ->
+          match clear, debug with
+          | `KeepBuffer, _ -> ()
+          | `ClearBuffer, Debug -> ()
+          | `ClearBuffer, Release ->
               let _ = Sys.command "clear" in
               print_newline ();
               G.print board in
         match (humanSide, currSide) with
         | One, One | Two, Two -> (
-            let n = acquire_input () in
+            let n = acquire_input board in
             if G.is_valid_move n board then
               let board' = G.move n board in
               print_newline ();

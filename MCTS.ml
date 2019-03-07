@@ -55,21 +55,11 @@ end = struct
     let q = 0.5 *. float_of_int (2 * win + draw) /. float_of_int total in
     { q; u; win; loss; draw; total }
 
-  let comp a b =
-    if a.total = b.total then Equal
-    else if a.total < b.total then Less
-    else Greater
-
-  let ( <-> ) = comp
-
-  let compt a b = 
-    if a.total = b.total then Equal
-    else if a.total < b.total then Less
-    else Greater
-
   let ( = ) a b = a.total = b.total
 
-  let ( $= ) a b = abs_float (a.q +. a.u -. (b.q +. b.u)) <. 1e-5
+  (* let ( $= ) a b = abs_float (a.q +. a.u -. (b.q +. b.u)) <. 1e-5 *)
+  let ( $= ) a b =
+    abs_float (a.q -. b.q) <. 1e-5 && abs_float (a.u -. b.u) <. 1e-5
 
   let ( > ) a b = a.total > b.total
 
@@ -179,9 +169,9 @@ module Make (M : GAME) : S
           Index.(i = j) in
         let branches' = replace_branch same_branch branch branch' branches in
         fav, Tree.Node ((i, p, f', b), branches')
-    | Tree.Leaf (i, p, _, board) as leaf ->
+    | Tree.Leaf (i, p, f, board) as leaf ->
         if M.is_finished board then
-          let f = (
+          let f' = (
             match M.winner_is board with
             | None -> Draw
             | Some p ->
@@ -189,7 +179,7 @@ module Make (M : GAME) : S
               | One, One | Two, Two -> Win
               | _ -> Loss)
             |> Score.of_outcome in
-          f, Tree.Leaf (i, p, f, board)
+          f', Tree.Leaf (i, p, Score.(f + f'), board)
         else playout player (expand_one_level leaf)
 
   let most_favored_move nplayouts board dbg =
