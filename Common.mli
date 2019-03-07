@@ -43,5 +43,5 @@ module type GAME = sig
   val move : Index.t -> t -> t
   val winner_is : t -> player option
   val print : t -> unit
-  val game_end_screen : t -> unit
+  val game_end_screen : t -> debug -> unit
 end

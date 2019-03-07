@@ -27,10 +27,10 @@ module Make (G : GAME) = struct
         match G.winner_is board with
         | None -> print_endline "The game is a draw."; exit 0
         | Some p ->
-            G.game_end_screen board;
-            print_string "The winner is ";
+            G.game_end_screen board Release;
+            print_string "Player ";
             print_player p;
-            print_endline ".";
+            print_endline " wins.";
             exit 0  (* Don't really know why this is necessary but meh *)
       else
         Printf.printf "Current player: ";
@@ -60,10 +60,10 @@ module Make (G : GAME) = struct
         match G.winner_is board with
         | None -> print_endline "The game is a draw."; exit 0
         | Some p ->
-            G.game_end_screen board;
-            print_string "The winner is ";
+            G.game_end_screen board debug;
+            print_string "Player ";
             print_player p;
-            print_endline ".";
+            print_endline " wins.";
             exit 0  (* Don't really know why this is necessary but meh *)
       else
         let _ =

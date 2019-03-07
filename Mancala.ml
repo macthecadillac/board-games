@@ -214,7 +214,7 @@ module M = struct
     Printf.printf "    ";
     print_endline sideOneRepr
 
-  let game_end_screen board =
+  let game_end_screen board _ =
     let aux s =
       Printf.printf "Player ";
       print_player (HalfBoard.get_player s);

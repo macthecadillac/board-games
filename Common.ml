@@ -51,8 +51,8 @@ type player = One | Two
 let switch_player = function One -> Two | Two -> One
 
 let print_player = function
-  | One -> Printf.printf "%s" "player 1"
-  | Two -> Printf.printf "%s" "player 2"
+  | One -> Printf.printf "%s" "1"
+  | Two -> Printf.printf "%s" "2"
 
 type debug = Debug | Release
 
@@ -67,5 +67,5 @@ module type GAME = sig
   val move : Index.t -> t -> t
   val winner_is : t -> player option
   val print : t -> unit
-  val game_end_screen : t -> unit
+  val game_end_screen : t -> debug -> unit
 end
