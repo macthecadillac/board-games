@@ -57,7 +57,6 @@ end = struct
 
   let ( = ) a b = a.total = b.total
 
-  (* let ( $= ) a b = abs_float (a.q +. a.u -. (b.q +. b.u)) <. 1e-5 *)
   let ( $= ) a b =
     abs_float (a.q -. b.q) <. 1e-5 && abs_float (a.u -. b.u) <. 1e-5
 
