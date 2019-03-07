@@ -2,6 +2,8 @@ open Common
 open Containers
 open CCFun
 
+module ANSI = ANSITerminal
+
 module C = struct
   let name = "connect4"
 
@@ -107,7 +109,16 @@ module C = struct
     |> _split_str
     |> List.rev
     |> List.map (String.to_list %> List.intersperse '|' %> pad %> String.of_list)
-    |> List.iter print_endline;
+    |> List.iter
+       (fun s ->
+         String.iter
+         (fun c ->
+           if Char.equal c 'x' then ANSI.print_string [ANSI.blue] "x"
+           else if Char.equal c 'o' then ANSI.print_string [ANSI.red] "o"
+           else if Char.equal c '|' then print_string "|"
+           else print_string " ")
+         s;
+         print_newline ());
     print_endline " 1 2 3 4 5 6 7 ";)
 
   let game_end_screen board =
