@@ -37,6 +37,8 @@ end = struct
              draw : int;
              total : int; }
 
+  type order = Less | Equal | Greater
+
   let init () = { q = 1.; u = 1.; win = 0; loss = 0; draw = 0; total = 0 }
 
   let of_outcome = function
@@ -52,6 +54,18 @@ end = struct
     and draw = a.draw + b.draw in
     let q = 0.5 *. float_of_int (2 * win + draw) /. float_of_int total in
     { q; u; win; loss; draw; total }
+
+  let comp a b =
+    if a.total = b.total then Equal
+    else if a.total < b.total then Less
+    else Greater
+
+  let ( <-> ) = comp
+
+  let compt a b = 
+    if a.total = b.total then Equal
+    else if a.total < b.total then Less
+    else Greater
 
   let ( = ) a b = a.total = b.total
 

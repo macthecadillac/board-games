@@ -34,6 +34,7 @@ module Count : CustomInt.S
 
 module type GAME = sig
   type t
+  val name : string
   val init : unit -> t
   val available_moves : t -> Index.t list
   val curr_player : t -> player
@@ -42,4 +43,5 @@ module type GAME = sig
   val move : Index.t -> t -> t
   val winner_is : t -> player option
   val print : t -> unit
+  val game_end_screen : t -> unit
 end
