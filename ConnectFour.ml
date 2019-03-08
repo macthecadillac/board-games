@@ -110,18 +110,18 @@ module C = struct
       let s1, s2 = String.take_drop 7 s in
       if String.equal s2 "" then s1 :: []
       else s1 :: _split_str s2 in
-    let pad s = ('|' :: s) @ ['|'] in
+    let pad s = ('-' :: s) @ ['-'] in
     (String.rev rawRepr
     |> _split_str
     |> List.rev
-    |> List.map (String.to_list %> List.intersperse '|' %> pad %> String.of_list)
+    |> List.map (String.to_list %> List.intersperse '-' %> pad %> String.of_list)
     |> List.iter
        (fun s ->
          String.iter
          (fun c ->
-           if Char.equal c 'x' then ANSI.print_string [ANSI.blue] "x"
-           else if Char.equal c 'o' then ANSI.print_string [ANSI.red] "o"
-           else if Char.equal c '|' then print_string "|"
+           if Char.equal c 'x' then ANSI.print_string [ANSI.red; ANSI.Bold] "●"
+           else if Char.equal c 'o' then ANSI.print_string [ANSI.blue; ANSI.Bold] "●"
+           else if Char.equal c '-' then print_string "¦"
            else print_string " ")
          s;
          print_newline ());
