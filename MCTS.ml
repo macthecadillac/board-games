@@ -182,15 +182,12 @@ module Make (M : GAME) : S
         else playout player (expand_one_level leaf)
 
   let most_favored_move nplayouts board dbg =
-    let rec aux n acc player (fav, tree) =
-      if n = 0 then acc, tree
-      else
-        let acc' = Score.(acc + fav) in
-        aux (n - 1) acc' player (playout player tree) in
     let player = M.curr_player board in
     let fav = Score.init () in
     let root = Tree.Leaf (Index.init (), player, fav, board) in
-    let _, root' = aux nplayouts (Score.init ()) player (Score.init (), root) in
+    let _, root' = Iter.init (fun _ -> ())
+      |> Iter.take nplayouts
+      |> Iter.fold (fun (_, tree) _ -> playout player tree) (fav, root) in
     match root' with
     | Leaf _ -> Index.init () (* inaccessible branch *)
     | Node (_, branches) ->
