@@ -25,7 +25,7 @@ module Make (G : GAME) = struct
     let rec aux board =
       if G.is_finished board then
         match G.winner_is board with
-        | None -> print_endline "The game is a draw."; exit 0
+        | None -> print_endline "\nThe game is a draw."; exit 0
         | Some p ->
             G.game_end_screen board Release;
             print_string "Player ";
@@ -58,7 +58,7 @@ module Make (G : GAME) = struct
       let currSide = G.curr_player board in
       if G.is_finished board then
         match G.winner_is board with
-        | None -> print_endline "The game is a draw."; exit 0
+        | None -> print_endline "\nThe game is a draw."; exit 0
         | Some p ->
             G.game_end_screen board debug;
             print_string "Player ";
@@ -101,19 +101,48 @@ module Make (G : GAME) = struct
     G.print initGame;
     aux `KeepBuffer nplayouts humanSide initGame
 
-  let launch_game mode humanSecond nplayouts dbg =
+  let demo_game nplayouts debug =
+    let rec aux nplayouts board =
+      if G.is_finished board then
+        match G.winner_is board with
+        | None -> print_endline "\nThe game is a draw."; exit 0
+        | Some p ->
+            print_string "\nPlayer ";
+            print_player p;
+            print_endline " wins.";
+            exit 0  (* Don't really know why this is necessary but meh *)
+      else
+        let aiMove = AI.most_favored_move nplayouts board debug in
+        let board' = G.move aiMove board in
+        print_string "Player ";
+        print_player (G.curr_player board);
+        Index.to_int aiMove + 1 |> Printf.printf "'s move: %i\n\n";
+        G.print board';
+        aux nplayouts board'
+    in
+    let initGame = G.init () in
+    print_newline ();
+    G.print initGame;
+    aux nplayouts initGame
+
+  let launch_game aigame demo humanSecond nplayouts dbg =
     let _ = Sys.command "clear" in
     let debug = if dbg then Debug else Release in
-    match mode with
-    | false -> two_player_game ()
-    | true ->
-      match humanSecond with
-      | true -> play_vs_ai nplayouts Two debug
-      | false -> play_vs_ai nplayouts One debug
+    match aigame, demo with
+    | false, false -> two_player_game ()
+    | false, true -> demo_game nplayouts debug
+    | true, true -> print_endline "Not a valid combination of options. See help.";
+    | true, false ->
+        if humanSecond then play_vs_ai nplayouts Two debug
+        else play_vs_ai nplayouts One debug
 
-  let mode =
+  let aigame =
     let doc = "Play against the computer." in
     Arg.(value & flag & info ["a"] ~doc)
+
+  let demo =
+    let doc = "Demo game." in
+    Arg.(value & flag & info ["m"] ~doc)
 
   let humanSecond =
     let doc = "Let the computer make the first move." in
@@ -137,7 +166,7 @@ module Make (G : GAME) = struct
 
   let game_t =
     let open Term in
-    const launch_game $ mode $ humanSecond $ nplayouts $ debug
+    const launch_game $ aigame $ demo $ humanSecond $ nplayouts $ debug
 
   let run () = Term.exit @@ Term.eval (game_t, info)
 end
