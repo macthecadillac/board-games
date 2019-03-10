@@ -1,6 +1,6 @@
 (executables
   (names ConnectFour Mancala)
   (public_names connect4 mancala)
-  (modules Common ChineseChess ConnectFour Interactive MCTS Mancala)
+  (modules Common Chess ConnectFour Interactive MCTS Mancala)
   (libraries ANSITerminal containers cmdliner)
   (package board-games))
