@@ -20,9 +20,9 @@ type outcome = Win | Loss | Draw
 
 module Score : sig
   type t
-  val init : unit -> t
-  val of_outcome : outcome -> t
-  val ( + ) : t -> t -> t
+  val init : int -> t
+  val update : t -> outcome -> t
+  val parent_total : t -> int
   val ( > ) : t -> t -> bool
   val ( $> ) : t -> t -> bool
   val ( $< ) : t -> t -> bool
@@ -35,25 +35,28 @@ end = struct
              win : int;
              loss : int;
              draw : int;
-             total : int; }
+             total : int;
+             ptot : int }
 
-  type order = Less | Equal | Greater
+  let init ptot = { q = 1.; u = 1.; win = 0; loss = 0; draw = 0;
+                  total = 0; ptot }
 
-  let init () = { q = 1.; u = 1.; win = 0; loss = 0; draw = 0; total = 0 }
-
-  let of_outcome = function
-    | Win -> { q = 1.0; u = 0.; win = 1; loss = 0; draw = 0; total = 1 }
-    | Loss -> { q = 0.; u = 0.; win = 0; loss = 1; draw = 0; total = 1 }
-    | Draw -> { q = 0.5; u = 0.; win = 0; loss = 0; draw = 1; total = 1 }
+  let parent_total a = a.ptot
 
   let ( + ) a b =
     let u = 1. /. float_of_int (a.total + b.total)
     and win = a.win + b.win
     and total = a.total + b.total
+    and ptot = a.ptot + 1
     and loss = a.loss + b.loss
     and draw = a.draw + b.draw in
     let q = 0.5 *. float_of_int (2 * win + draw) /. float_of_int total in
-    { q; u; win; loss; draw; total }
+    { q; u; win; loss; draw; total; ptot }
+
+  let update a = function
+    | Win -> a + { q = 1.0; u = 0.; win = 1; loss = 0; draw = 0; total = 1; ptot = 0 }
+    | Loss -> a + { q = 0.; u = 0.; win = 0; loss = 1; draw = 0; total = 1; ptot = 0 }
+    | Draw -> a + { q = 0.5; u = 0.; win = 0; loss = 0; draw = 1; total = 1; ptot = 0}
 
   let ( = ) a b = a.total = b.total
 
@@ -62,20 +65,23 @@ end = struct
 
   let ( > ) a b = a.total > b.total
 
-  let score_own a = a.q *. sqrt a.u +. a.u ** 2.
-  let score_opponent a = (1. -. a.q) *. sqrt a.u +. a.u ** 2.
+  let score q a =
+    sqrt ((log (Float.of_int a.ptot)) /. Float.of_int (a.total)) +. q *. sqrt a.u
+
+  let score_self a = score a.q a
+  let score_other a = score (1. -. a.q) a
 
   let ( $< ) a b =
     if a $= b then false
-    else score_opponent a >. score_opponent b
+    else score_other a >. score_other b
 
   let ( $> ) a b =
     if a $= b then false
-    else score_own a >. score_own b
+    else score_self a >. score_self b
 
   let print a = Printf.printf
-                "(q: %f, u: %f, win: %i, draw: %i, loss: %i, total: %i)\tscore = %f"
-                a.q a.u a.win a.draw a.loss a.total (score_own a)
+                "(q: %f, u: %f, win: %i, draw: %i, loss: %i, total: %i, ptot: %i)\tscore = %f"
+                a.q a.u a.win a.draw a.loss a.total a.ptot (score_self a)
 end
 
 module type S = sig
@@ -127,15 +133,17 @@ module Make (M : GAME) : S
         if f hd b then b' :: tl
         else hd :: (replace_branch f b b' tl)
 
+  (* TODO: Replace ExpansionError with something concrete for games in which
+   * players may run out of moves mid-game, such as reversi *)
   let rec expand_one_level tree =
-    let rec list_branches brd = function
+    let rec list_branches ptot brd = function
       | [] -> []
       | n :: tl ->
           let node' =
             let p = M.curr_player brd in
             let brd' = M.move n brd in
             let p' = M.curr_player brd' in
-            let leaf = Tree.Leaf (n, p', Score.init (), brd') in
+            let leaf = Tree.Leaf (n, p', Score.init 0, brd') in
             match (p, p') with
             | One, Two | Two, One -> leaf
             | One, One | Two, Two ->
@@ -143,52 +151,54 @@ module Make (M : GAME) : S
                 else
                   match expand_one_level leaf with
                   | Tree.Leaf _ -> raise ExpansionError
-                  | Tree.Node ((_, p', favi, brd'), l) ->
-                      Tree.Node ((n, p', favi, brd'), l)
-          in node' :: list_branches brd tl in
-    let i, p, f, b =
+                  | Tree.Node ((_, p', score, brd'), l) ->
+                      Tree.Node ((n, p', score, brd'), l)
+          in node' :: list_branches ptot brd tl in
+    let i, p, s, b =
       match tree with
-      | Tree.Leaf (indx, plyr, fav, brd) -> indx, plyr, fav, brd
+      | Tree.Leaf (indx, plyr, score, brd) -> indx, plyr, score, brd
       | Tree.Node _ -> raise ExpansionError in
     match M.available_moves b with
     | [] -> raise ExpansionError
-    | moves -> Tree.Node ((i, p, f, b), list_branches b moves)
+    | moves -> Tree.Node ((i, p, s, b), list_branches (Score.parent_total s) b moves)
 
-  let rec playout player = function
-    | Tree.Node ((i, p, f, b), branches) ->
-        let branch =
-          match (p, player) with
-          | One, One | Two, Two -> pick _branch_gt _branch_eq branches
-          | _ -> pick _branch_lt _branch_eq branches in
-        let fav, branch' = playout player branch in
-        let f' = Score.(fav + f) in
-        let same_branch = fun a b ->
-          let i, _, _, _ = Tree.node_elt a
-          and j, _, _, _ = Tree.node_elt b in
-          Index.(i = j) in
-        let branches' = replace_branch same_branch branch branch' branches in
-        fav, Tree.Node ((i, p, f', b), branches')
-    | Tree.Leaf (i, p, f, board) as leaf ->
-        if M.is_finished board then
-          let f' = (
-            match M.winner_is board with
-            | None -> Draw
-            | Some p ->
-              match (p, player) with
-              | One, One | Two, Two -> Win
-              | _ -> Loss)
-            |> Score.of_outcome in
-          f', Tree.Leaf (i, p, Score.(f + f'), board)
-        else playout player (expand_one_level leaf)
+  let playout player tree =
+    let rec aux player = function
+      | Tree.Node ((i, p, f, b), branches) ->
+          let branch =
+            match (p, player) with
+            | One, One | Two, Two -> pick _branch_gt _branch_eq branches
+            | _ -> pick _branch_lt _branch_eq branches in
+          let outcome, branch' = aux player branch in
+          let f' = Score.update f outcome in
+          let same_branch = fun a b ->
+            let i, _, _, _ = Tree.node_elt a
+            and j, _, _, _ = Tree.node_elt b in
+            Index.(i = j) in
+          let branches' = replace_branch same_branch branch branch' branches in
+          outcome, Tree.Node ((i, p, f', b), branches')
+      | Tree.Leaf (i, p, f, board) as leaf ->
+          if M.is_finished board then
+            let outcome = 
+              match M.winner_is board with
+              | None -> Draw
+              | Some p ->
+                match (p, player) with
+                | One, One | Two, Two -> Win
+                | _ -> Loss in
+            outcome, Tree.Leaf (i, p, Score.update f outcome, board)
+          else aux player (expand_one_level leaf) in
+    let _, tree' = aux player tree in
+    tree'
 
-  let most_favored_move nplayouts board dbg =
+  let most_favored_move maxIter board dbg =
     let player = M.curr_player board in
-    let fav = Score.init () in
-    let root = Tree.Leaf (Index.init (), player, fav, board) in
-    let _, root' = Iter.init (fun _ -> ())
-      |> Iter.take nplayouts
-      |> Iter.fold (fun (_, tree) _ -> playout player tree) (fav, root) in
-    match root' with
+    let initScore = Score.init 0 in
+    let emptyTree = Tree.Leaf (Index.init (), player, initScore, board) in
+    let tree = Iter.repeat ()
+      |> Iter.take maxIter
+      |> Iter.fold (fun tree _ -> playout player tree) emptyTree in
+    match tree with
     | Leaf _ -> Index.init () (* inaccessible branch *)
     | Node (_, branches) ->
         let _ =
